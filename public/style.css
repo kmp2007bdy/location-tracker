@@ -31,6 +31,7 @@ body {
     align-items: center !important;
     justify-content: center !important;
     flex-direction: column !important;
+    padding: 20px !important;
 }
 
 .login-box {
@@ -58,31 +59,41 @@ body {
 
 .login-input {
     width: 100% !important;
-    padding: 12px 16px !important;
+    padding: 14px 16px !important;
     border: 2px solid #ddd !important;
-    border-radius: 8px !important;
-    font-size: 16px !important;
+    border-radius: 10px !important;
+    font-size: 18px !important;
     margin-bottom: 15px !important;
     outline: none !important;
     background: white !important;
     color: black !important;
+    min-height: 50px !important;
     transition: border-color 0.3s;
+    -webkit-appearance: none !important;
 }
 
 .login-input:focus {
     border-color: #2c3e50 !important;
+    box-shadow: 0 0 10px rgba(44, 62, 80, 0.2) !important;
 }
 
 .login-btn {
     width: 100% !important;
-    padding: 12px !important;
+    padding: 14px !important;
     background: #2c3e50 !important;
     color: white !important;
     border: none !important;
-    border-radius: 8px !important;
-    font-size: 16px !important;
+    border-radius: 10px !important;
+    font-size: 18px !important;
     cursor: pointer !important;
-    transition: background 0.3s;
+    min-height: 50px !important;
+    transition: background 0.3s, transform 0.1s;
+    -webkit-tap-highlight-color: transparent !important;
+}
+
+.login-btn:active {
+    transform: scale(0.95);
+    background: #1a252f !important;
 }
 
 .login-btn:hover {
@@ -133,6 +144,11 @@ h1 {
     font-size: 14px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
     transition: all 0.3s;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.dark-toggle:active {
+    transform: scale(0.95);
 }
 
 .dark-toggle:hover {
@@ -169,6 +185,11 @@ h1 {
     transition: all 0.3s;
     text-align: left;
     white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.map-style-btn:active {
+    transform: scale(0.95);
 }
 
 .map-style-btn:hover {
@@ -401,6 +422,11 @@ h1 {
     display: flex;
     align-items: center;
     justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.sos-button:active {
+    transform: scale(0.9);
 }
 
 .sos-button:hover {
@@ -459,10 +485,15 @@ body.dark-mode .login-input {
 
 body.dark-mode .login-input:focus {
     border-color: #58a6ff !important;
+    box-shadow: 0 0 10px rgba(88, 166, 255, 0.2) !important;
 }
 
 body.dark-mode .login-btn {
     background: #238636 !important;
+}
+
+body.dark-mode .login-btn:active {
+    background: #1a7a2e !important;
 }
 
 body.dark-mode .login-btn:hover {
@@ -633,6 +664,23 @@ body.dark-mode ::-webkit-scrollbar-thumb:hover {
 /* ===== RESPONSIVE ===== */
 
 @media (max-width: 768px) {
+    .login-box {
+        padding: 30px 20px !important;
+        max-width: 95% !important;
+    }
+    .login-box h2 {
+        font-size: 24px !important;
+    }
+    .login-input {
+        font-size: 18px !important;
+        padding: 14px 16px !important;
+        min-height: 50px !important;
+    }
+    .login-btn {
+        font-size: 18px !important;
+        padding: 14px !important;
+        min-height: 50px !important;
+    }
     .sidebar {
         width: 180px;
         right: 10px;
@@ -681,12 +729,6 @@ body.dark-mode ::-webkit-scrollbar-thumb:hover {
     h1 {
         font-size: 1.1rem;
         padding: 12px;
-    }
-    .login-box {
-        padding: 30px 20px;
-    }
-    .login-box h2 {
-        font-size: 22px;
     }
 }
 

@@ -11,6 +11,7 @@ const io = socketIo(server, {
     }
 });
 
+// ===== PREVENT CACHING =====
 app.use((req, res, next) => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     res.setHeader('Pragma', 'no-cache');
@@ -64,7 +65,7 @@ io.on('connection', (socket) => {
         io.emit('chat-message', {
             ...data,
             userId: socket.id.slice(0, 6),
-            username: users[socket.id]?.username || 'Anonymous'
+            username: users[socket.id] ? .username || 'Anonymous'
         });
     });
 
@@ -72,7 +73,7 @@ io.on('connection', (socket) => {
         io.emit('sos-alert', {
             ...data,
             userId: socket.id.slice(0, 6),
-            username: users[socket.id]?.username || 'Anonymous',
+            username: users[socket.id] ? .username || 'Anonymous',
             socketId: socket.id
         });
     });

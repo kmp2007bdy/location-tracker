@@ -37,7 +37,8 @@ mapLayers.carto.addTo(map);
 const styleBtns = document.querySelectorAll('.map-style-btn');
 
 styleBtns.forEach(btn => {
-    btn.addEventListener('click', function() {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
         // Remove active class from all buttons
         styleBtns.forEach(b => b.classList.remove('active'));
         this.classList.add('active');
@@ -72,21 +73,63 @@ socket.on('disconnect', () => {
 });
 
 // ========================================
-// 5. USERNAME SYSTEM
+// 5. USERNAME SYSTEM (Mobile Optimized)
 // ========================================
 function joinApp() {
     const input = document.getElementById('username-input');
     username = input.value.trim() || 'Anonymous';
+
+    // Hide login screen
     document.getElementById('login-screen').style.display = 'none';
 
+    // Send username to server
     socket.emit('set-username', username);
+
+    // Start location tracking
     startLocationTracking();
 }
 
-document.getElementById('join-btn').addEventListener('click', joinApp);
-document.getElementById('username-input').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') joinApp();
+// Mobile-optimized event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    const joinBtn = document.getElementById('join-btn');
+    const usernameInput = document.getElementById('username-input');
+
+    // Button click (desktop and mobile)
+    if (joinBtn) {
+        joinBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            joinApp();
+        });
+
+        // Touch support for mobile
+        joinBtn.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            joinApp();
+        });
+    }
+
+    // Enter key support
+    if (usernameInput) {
+        usernameInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.keyCode === 13) {
+                e.preventDefault();
+                joinApp();
+            }
+        });
+
+        // Auto-focus on mobile
+        setTimeout(function() {
+            usernameInput.focus();
+            // Force keyboard to show on mobile
+            if (window.innerWidth < 768) {
+                usernameInput.click();
+            }
+        }, 300);
+    }
 });
+
+// Make joinApp globally accessible
+window.joinApp = joinApp;
 
 // ========================================
 // 6. DEVICE DETECTION
@@ -127,6 +170,7 @@ function startLocationTracking() {
             },
             (error) => {
                 console.error('❌ Geolocation error:', error);
+                // Don't alert on mobile to avoid annoying popups
             }, {
                 enableHighAccuracy: true,
                 timeout: 10000,
@@ -364,7 +408,8 @@ socket.on('chat-message', (data) => {
 // ========================================
 // 15. SOS BUTTON
 // ========================================
-document.getElementById('sos-button').addEventListener('click', () => {
+document.getElementById('sos-button').addEventListener('click', function(e) {
+    e.preventDefault();
     if (!myLocation) {
         alert('⏳ Getting your location...');
         return;
@@ -390,6 +435,12 @@ document.getElementById('sos-button').addEventListener('click', () => {
     }, 1000);
 
     alert('🚨 SOS Alert sent to all online users!');
+});
+
+// Touch support for SOS
+document.getElementById('sos-button').addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    this.click();
 });
 
 socket.on('sos-alert', (data) => {
@@ -449,10 +500,17 @@ socket.on('sos-alert', (data) => {
 const darkToggle = document.getElementById('dark-toggle');
 let darkMode = false;
 
-darkToggle.addEventListener('click', () => {
+darkToggle.addEventListener('click', function(e) {
+    e.preventDefault();
     darkMode = !darkMode;
     document.body.classList.toggle('dark-mode');
     darkToggle.textContent = darkMode ? '☀️ Light Mode' : '🌙 Dark Mode';
+});
+
+// Touch support for dark mode
+darkToggle.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    this.click();
 });
 
 // ========================================
@@ -472,7 +530,7 @@ function playSound(type) {
 }
 
 // ========================================
-// 18. MAP CLICK - SHOW ADDRESS
+// 18. MAP CLICK - SHOW ADDRESS (Mobile Friendly)
 // ========================================
 map.on('click', async function(e) {
             const { lat, lng } = e.latlng;
@@ -500,7 +558,7 @@ map.on('click', async function(e) {
                     popup.setContent(`
                 <b>📍 ${streetName}</b><br>
                 ${city ? `${city.trim()}, ` : ''}${country.trim()}<br>
-                <small style="color:#666;">Click again to search</small>
+                <small style="color:#666;">Tap again to search</small>
             `);
         } else {
             popup.setContent(`📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
@@ -512,7 +570,7 @@ map.on('click', async function(e) {
 });
 
 // ========================================
-// 19. KEYBOARD SHORTCUTS
+// 19. KEYBOARD SHORTCUTS (Desktop Only)
 // ========================================
 document.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.shiftKey && e.key === 'D') {
@@ -558,3 +616,4 @@ console.log('  Ctrl+Shift+2 = Satellite');
 console.log('  Ctrl+Shift+3 = OpenStreetMap');
 console.log('  Ctrl+Shift+4 = Dark Map');
 console.log('  Escape = Close popups');
+console.log('📱 Mobile support enabled!');
