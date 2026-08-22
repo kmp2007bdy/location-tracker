@@ -56,7 +56,6 @@ let previousCount = 0;
 
 socket.on('connect', () => {
     console.log('✅ Connected to server');
-    // Auto-join with random username
     socket.emit('set-username', username);
     startLocationTracking();
 });
@@ -77,7 +76,50 @@ console.log('📱 Device:', deviceType);
 console.log('👤 Auto-login as:', username);
 
 // ========================================
-// 6. LOCATION TRACKING
+// 6. ROUTE CALCULATIONS (Like Google Maps)
+// ========================================
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+function calculateDuration(distanceKm, speedKmh = 5) {
+    // Default speed: 5 km/h (walking)
+    // You can change to: 50 km/h (driving), 15 km/h (biking)
+    const hours = distanceKm / speedKmh;
+    const minutes = Math.round(hours * 60);
+    return minutes;
+}
+
+function getSpeedText(deviceType) {
+    if (deviceType && deviceType.includes('Phone')) {
+        return '🚶 Walking'; // Walking speed for phones
+    }
+    return '🚗 Driving'; // Driving speed for laptops
+}
+
+function formatDuration(minutes) {
+    if (minutes < 1) return 'Less than 1 min';
+    if (minutes < 60) return `${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours}h ${mins}m`;
+}
+
+function formatDistance(km) {
+    if (km < 1) return `${(km * 1000).toFixed(0)} m`;
+    return `${km.toFixed(2)} km`;
+}
+
+// ========================================
+// 7. LOCATION TRACKING
 // ========================================
 function startLocationTracking() {
     console.log('📍 Starting location tracking...');
@@ -104,24 +146,60 @@ function startLocationTracking() {
 }
 
 // ========================================
-// 7. MARKERS & LOCATION HISTORY
+// 8. MARKERS & ROUTES
 // ========================================
 const markers = {};
 const locationHistory = {};
+const routeLines = {};
 
 // ========================================
-// 8. RECEIVE LOCATION UPDATES
+// 9. RECEIVE LOCATION UPDATES (With Route Info)
 // ========================================
 socket.on('update-location', (data) => {
-    const { id, latitude, longitude, device, connectedAt, username: userName } = data;
+    const { id, latitude, longitude, device, connectedAt, username: userName, lastUpdate } = data;
     if (id === socket.id) return;
     
     if (!locationHistory[id]) locationHistory[id] = [];
     locationHistory[id].push([latitude, longitude]);
     if (locationHistory[id].length > 50) locationHistory[id].shift();
     
+    // Calculate route info
+    let distance = 0;
+    let duration = 0;
+    let speedText = '🚶 Walking';
+    
+    if (myLocation) {
+        distance = calculateDistance(
+            myLocation.latitude, myLocation.longitude,
+            latitude, longitude
+        );
+        const speed = device && device.includes('Phone') ? 5 : 50;
+        duration = calculateDuration(distance, speed);
+        speedText = device && device.includes('Phone') ? '🚶 Walking' : '🚗 Driving';
+    }
+    
+    // Update or create marker
     if (markers[id]) {
         markers[id].setLatLng([latitude, longitude]);
+        
+        // Update popup with route info
+        const displayName = userName || id.slice(0, 6);
+        markers[id].setPopupContent(`
+            <b>👤 ${displayName}</b><br>
+            📱 ${device || 'Unknown'}<br>
+            📏 Distance: ${formatDistance(distance)}<br>
+            ⏱️ ETA: ${formatDuration(duration)}<br>
+            ${speedText}
+        `);
+        
+        // Update route line
+        if (myLocation && routeLines[id]) {
+            routeLines[id].setLatLngs([
+                [myLocation.latitude, myLocation.longitude],
+                [latitude, longitude]
+            ]);
+        }
+        
         if (locationHistory[id].length > 2 && markers[id].trail) {
             markers[id].trail.setLatLngs(locationHistory[id]);
         }
@@ -135,19 +213,45 @@ socket.on('update-location', (data) => {
             html: `<div style="background:${color};width:${iconSize}px;height:${iconSize}px;border-radius:50%;border:3px solid white;box-shadow:0 0 10px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:${iconSize*0.5}px;">${emoji}</div>`,
             iconSize: [iconSize, iconSize]
         });
+        
+        const displayName = userName || id.slice(0, 6);
         markers[id] = L.marker([latitude, longitude], { icon: customIcon })
             .addTo(map)
-            .bindPopup(`<b>👤 ${userName || id.slice(0, 6)}</b><br>📱 ${device || 'Unknown'}`);
+            .bindPopup(`
+                <b>👤 ${displayName}</b><br>
+                📱 ${device || 'Unknown'}<br>
+                📏 Distance: ${formatDistance(distance)}<br>
+                ⏱️ ETA: ${formatDuration(duration)}<br>
+                ${speedText}
+            `);
+        
+        // Draw route line to this user
+        if (myLocation) {
+            routeLines[id] = L.polyline([
+                [myLocation.latitude, myLocation.longitude],
+                [latitude, longitude]
+            ], {
+                color: color,
+                weight: 3,
+                opacity: 0.6,
+                dashArray: '8, 6'
+            }).addTo(map);
+        }
+        
+        // Trail
         if (locationHistory[id].length > 2) {
             markers[id].trail = L.polyline(locationHistory[id], {
-                color: color, weight: 2, opacity: 0.4, dashArray: '5, 5'
+                color: color,
+                weight: 2,
+                opacity: 0.3,
+                dashArray: '5, 5'
             }).addTo(map);
         }
     }
 });
 
 // ========================================
-// 9. USER DISCONNECT
+// 10. USER DISCONNECT
 // ========================================
 socket.on('user-disconnected', (id) => {
     if (markers[id]) {
@@ -155,11 +259,15 @@ socket.on('user-disconnected', (id) => {
         map.removeLayer(markers[id]);
         delete markers[id];
     }
+    if (routeLines[id]) {
+        map.removeLayer(routeLines[id]);
+        delete routeLines[id];
+    }
     delete locationHistory[id];
 });
 
 // ========================================
-// 10. USER COUNT & LIST
+// 11. USER COUNT & LIST
 // ========================================
 socket.on('user-count', (count) => {
     document.getElementById('count').textContent = count;
@@ -188,7 +296,7 @@ socket.on('user-list', (users) => {
 socket.emit('get-users');
 
 // ========================================
-// 11. CHAT
+// 12. CHAT
 // ========================================
 const chatInput = document.getElementById('chat-input');
 const chatSend = document.getElementById('chat-send');
@@ -222,7 +330,7 @@ socket.on('chat-message', (data) => {
 });
 
 // ========================================
-// 12. SOS
+// 13. SOS
 // ========================================
 document.getElementById('sos-button').addEventListener('click', function(e) {
     e.preventDefault();
@@ -257,7 +365,7 @@ socket.on('sos-alert', (data) => {
 });
 
 // ========================================
-// 13. DARK MODE
+// 14. DARK MODE
 // ========================================
 const darkToggle = document.getElementById('dark-toggle');
 let darkMode = false;
@@ -269,7 +377,7 @@ darkToggle.addEventListener('click', function(e) {
 });
 
 // ========================================
-// 14. SOUNDS
+// 15. SOUNDS
 // ========================================
 function playSound(type) {
     const sounds = {
@@ -285,7 +393,7 @@ function playSound(type) {
 }
 
 // ========================================
-// 15. MAP CLICK - ADDRESS
+// 16. MAP CLICK - ADDRESS
 // ========================================
 map.on('click', async function(e) {
     const { lat, lng } = e.latlng;
@@ -309,7 +417,7 @@ map.on('click', async function(e) {
 });
 
 // ========================================
-// 16. KEYBOARD SHORTCUTS
+// 17. KEYBOARD SHORTCUTS
 // ========================================
 document.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.shiftKey && e.key === 'D') { e.preventDefault(); darkToggle.click(); }
@@ -324,5 +432,6 @@ document.addEventListener('keydown', (e) => {
 console.log('🚀 App loaded!');
 console.log('📱 Device:', deviceType);
 console.log('👤 Auto-logged in as:', username);
-console.log('✅ No login page - works immediately!');
+console.log('✅ Route & duration tracking enabled!');
+console.log('📏 Click any user marker to see distance and ETA');
 console.log('⌨️ Shortcuts: Ctrl+Shift+D (Dark), Ctrl+Shift+S (SOS), Ctrl+Shift+1-4 (Maps)');

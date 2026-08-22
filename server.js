@@ -24,7 +24,7 @@ let users = {};
 let previousCount = 0;
 
 io.on('connection', (socket) => {
-    console.log('New user connected:', socket.id);
+    console.log('✅ New user connected:', socket.id);
     socket.emit('user-list', users);
 
     socket.on('set-username', (username) => {
@@ -38,10 +38,11 @@ io.on('connection', (socket) => {
         users[socket.id] = {
             latitude: data.latitude,
             longitude: data.longitude,
-            device: data.device || 'Unknown',
+            device: data.device || '💻 Unknown',
             connectedAt: new Date().toLocaleTimeString(),
             username: data.username || 'Anonymous',
-            userAgent: data.userAgent || 'Unknown'
+            userAgent: data.userAgent || 'Unknown',
+            lastUpdate: Date.now()
         };
         io.emit('update-location', {
             id: socket.id,
@@ -49,7 +50,8 @@ io.on('connection', (socket) => {
             longitude: data.longitude,
             device: users[socket.id].device,
             connectedAt: users[socket.id].connectedAt,
-            username: users[socket.id].username
+            username: users[socket.id].username,
+            lastUpdate: users[socket.id].lastUpdate
         });
         io.emit('user-list', users);
         const count = Object.keys(users).length;
@@ -93,5 +95,6 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, '0.0.0.0', () => {
-    console.log('Server running on port', PORT);
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log('📊 Waiting for connections...');
 });
