@@ -11,7 +11,6 @@ const io = socketIo(server, {
     }
 });
 
-// ===== PREVENT CACHING =====
 app.use((req, res, next) => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     res.setHeader('Pragma', 'no-cache');
@@ -25,7 +24,7 @@ let users = {};
 let previousCount = 0;
 
 io.on('connection', (socket) => {
-    console.log('✅ New user connected:', socket.id);
+    console.log('New user connected:', socket.id);
     socket.emit('user-list', users);
 
     socket.on('set-username', (username) => {
@@ -39,7 +38,7 @@ io.on('connection', (socket) => {
         users[socket.id] = {
             latitude: data.latitude,
             longitude: data.longitude,
-            device: data.device || '💻 Unknown',
+            device: data.device || 'Unknown',
             connectedAt: new Date().toLocaleTimeString(),
             username: data.username || 'Anonymous',
             userAgent: data.userAgent || 'Unknown'
@@ -65,7 +64,7 @@ io.on('connection', (socket) => {
         io.emit('chat-message', {
             ...data,
             userId: socket.id.slice(0, 6),
-            username: users[socket.id] ? .username || 'Anonymous'
+            username: (users[socket.id] && users[socket.id].username) || 'Anonymous'
         });
     });
 
@@ -73,7 +72,7 @@ io.on('connection', (socket) => {
         io.emit('sos-alert', {
             ...data,
             userId: socket.id.slice(0, 6),
-            username: users[socket.id] ? .username || 'Anonymous',
+            username: (users[socket.id] && users[socket.id].username) || 'Anonymous',
             socketId: socket.id
         });
     });
@@ -94,6 +93,5 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
-    console.log('📊 Waiting for connections...');
+    console.log('Server running on port', PORT);
 });
