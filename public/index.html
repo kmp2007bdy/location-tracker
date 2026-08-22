@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
-    <!-- Audio for notifications -->
     <audio id="sound-message" preload="auto">
         <source src="https://www.soundjay.com/communication/electronic-chime-1-124506.mp3" type="audio/mpeg">
     </audio>
@@ -19,28 +18,6 @@
     </audio>
 </head>
 <body>
-    <!-- Login Screen -->
-    <div id="login-screen" class="login-screen">
-        <div class="login-box">
-            <div style="font-size:48px;margin-bottom:10px;">👋</div>
-            <h2>Welcome!</h2>
-            <p>Enter your name to join</p>
-            <input type="text" id="username-input" placeholder="Your name..." class="login-input" autofocus>
-            
-            <!-- Primary Join Button -->
-            <button id="join-btn" class="login-btn" onclick="handleJoin()">Join Now 🚀</button>
-            
-            <!-- FALLBACK: Big red button that ALWAYS works -->
-            <button id="fallback-join-btn" style="width:100%;padding:16px;background:#ff4757;color:white;border:none;border-radius:12px;font-size:20px;margin-top:12px;cursor:pointer;touch-action:manipulation;min-height:60px;" onclick="handleJoin()">
-                📱 TAP HERE TO JOIN
-            </button>
-            
-            <div style="margin-top:15px;font-size:12px;color:#999;">
-                Tap the red button if the blue one doesn't work
-            </div>
-        </div>
-    </div>
-
     <h1>📍 Live Location Tracker</h1>
 
     <button id="dark-toggle" class="dark-toggle">🌙 Dark Mode</button>

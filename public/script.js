@@ -51,82 +51,20 @@ styleBtns.forEach(btn => {
 // ========================================
 const socket = io();
 let myLocation = null;
-let username = '';
+let username = 'User_' + Math.floor(Math.random() * 1000);
 let previousCount = 0;
 
-socket.on('connect', () => console.log('✅ Connected'));
+socket.on('connect', () => {
+    console.log('✅ Connected to server');
+    // Auto-join with random username
+    socket.emit('set-username', username);
+    startLocationTracking();
+});
+
 socket.on('disconnect', () => console.log('❌ Disconnected'));
 
 // ========================================
-// 5. UNIVERSAL JOIN FUNCTION (Works on ALL devices)
-// ========================================
-function handleJoin() {
-    console.log('🔥 handleJoin() called!');
-    const input = document.getElementById('username-input');
-    username = input.value.trim() || 'Anonymous';
-    
-    console.log('👤 Username:', username);
-    
-    // Hide login screen
-    const loginScreen = document.getElementById('login-screen');
-    if (loginScreen) {
-        loginScreen.style.display = 'none';
-    }
-    
-    // Send username to server
-    socket.emit('set-username', username);
-    
-    // Start location tracking
-    startLocationTracking();
-}
-
-// Make it globally accessible
-window.handleJoin = handleJoin;
-
-// ========================================
-// 6. EVENT LISTENERS (Works on ALL devices)
-// ========================================
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 DOM ready!');
-    
-    const joinBtn = document.getElementById('join-btn');
-    const fallbackBtn = document.getElementById('fallback-join-btn');
-    const usernameInput = document.getElementById('username-input');
-    
-    // Direct click handlers
-    if (joinBtn) {
-        joinBtn.onclick = handleJoin;
-        joinBtn.ontouchstart = handleJoin;
-    }
-    
-    if (fallbackBtn) {
-        fallbackBtn.onclick = handleJoin;
-        fallbackBtn.ontouchstart = handleJoin;
-    }
-    
-    // Enter key support
-    if (usernameInput) {
-        usernameInput.onkeydown = function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                handleJoin();
-            }
-        };
-    }
-    
-    // Auto-focus on mobile
-    setTimeout(() => {
-        if (usernameInput) {
-            usernameInput.focus();
-            if (window.innerWidth < 768) {
-                usernameInput.click();
-            }
-        }
-    }, 500);
-});
-
-// ========================================
-// 7. DEVICE DETECTION
+// 5. DEVICE DETECTION
 // ========================================
 function getDeviceType() {
     const ua = navigator.userAgent;
@@ -136,9 +74,10 @@ function getDeviceType() {
 }
 const deviceType = getDeviceType();
 console.log('📱 Device:', deviceType);
+console.log('👤 Auto-login as:', username);
 
 // ========================================
-// 8. LOCATION TRACKING
+// 6. LOCATION TRACKING
 // ========================================
 function startLocationTracking() {
     console.log('📍 Starting location tracking...');
@@ -165,13 +104,13 @@ function startLocationTracking() {
 }
 
 // ========================================
-// 9. MARKERS & LOCATION HISTORY
+// 7. MARKERS & LOCATION HISTORY
 // ========================================
 const markers = {};
 const locationHistory = {};
 
 // ========================================
-// 10. RECEIVE LOCATION UPDATES
+// 8. RECEIVE LOCATION UPDATES
 // ========================================
 socket.on('update-location', (data) => {
     const { id, latitude, longitude, device, connectedAt, username: userName } = data;
@@ -208,7 +147,7 @@ socket.on('update-location', (data) => {
 });
 
 // ========================================
-// 11. USER DISCONNECT
+// 9. USER DISCONNECT
 // ========================================
 socket.on('user-disconnected', (id) => {
     if (markers[id]) {
@@ -220,7 +159,7 @@ socket.on('user-disconnected', (id) => {
 });
 
 // ========================================
-// 12. USER COUNT & LIST
+// 10. USER COUNT & LIST
 // ========================================
 socket.on('user-count', (count) => {
     document.getElementById('count').textContent = count;
@@ -249,7 +188,7 @@ socket.on('user-list', (users) => {
 socket.emit('get-users');
 
 // ========================================
-// 13. CHAT
+// 11. CHAT
 // ========================================
 const chatInput = document.getElementById('chat-input');
 const chatSend = document.getElementById('chat-send');
@@ -283,7 +222,7 @@ socket.on('chat-message', (data) => {
 });
 
 // ========================================
-// 14. SOS
+// 12. SOS
 // ========================================
 document.getElementById('sos-button').addEventListener('click', function(e) {
     e.preventDefault();
@@ -318,7 +257,7 @@ socket.on('sos-alert', (data) => {
 });
 
 // ========================================
-// 15. DARK MODE
+// 13. DARK MODE
 // ========================================
 const darkToggle = document.getElementById('dark-toggle');
 let darkMode = false;
@@ -330,7 +269,7 @@ darkToggle.addEventListener('click', function(e) {
 });
 
 // ========================================
-// 16. SOUNDS
+// 14. SOUNDS
 // ========================================
 function playSound(type) {
     const sounds = {
@@ -346,7 +285,7 @@ function playSound(type) {
 }
 
 // ========================================
-// 17. MAP CLICK - ADDRESS
+// 15. MAP CLICK - ADDRESS
 // ========================================
 map.on('click', async function(e) {
     const { lat, lng } = e.latlng;
@@ -370,7 +309,7 @@ map.on('click', async function(e) {
 });
 
 // ========================================
-// 18. KEYBOARD SHORTCUTS
+// 16. KEYBOARD SHORTCUTS
 // ========================================
 document.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.shiftKey && e.key === 'D') { e.preventDefault(); darkToggle.click(); }
@@ -384,4 +323,6 @@ document.addEventListener('keydown', (e) => {
 
 console.log('🚀 App loaded!');
 console.log('📱 Device:', deviceType);
-console.log('✅ All features restored with working login!');
+console.log('👤 Auto-logged in as:', username);
+console.log('✅ No login page - works immediately!');
+console.log('⌨️ Shortcuts: Ctrl+Shift+D (Dark), Ctrl+Shift+S (SOS), Ctrl+Shift+1-4 (Maps)');
