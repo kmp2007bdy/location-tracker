@@ -3,9 +3,18 @@
 // ========================================
 const map = L.map('map').setView([40.7128, -74.0060], 13);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+// Define map layers
+const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors'
-}).addTo(map);
+});
+
+const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: '© Esri'
+});
+
+// Add default layer
+let currentLayer = 'street';
+streetLayer.addTo(map);
 
 // ========================================
 // 2. SOCKET CONNECTION
@@ -13,6 +22,8 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 const socket = io();
 
 let myLocation = null;
+let username = '';
+let previousCount = 0;
 
 socket.on('connect', () => {
     console.log('✅ Connected to server');
@@ -23,7 +34,27 @@ socket.on('disconnect', () => {
 });
 
 // ========================================
-// 3. DEVICE DETECTION
+// 3. USERNAME SYSTEM
+// ========================================
+function joinApp() {
+    const input = document.getElementById('username-input');
+    username = input.value.trim() || 'Anonymous';
+    document.getElementById('login-screen').style.display = 'none';
+
+    // Send username to server
+    socket.emit('set-username', username);
+
+    // Start location tracking
+    startLocationTracking();
+}
+
+document.getElementById('join-btn').addEventListener('click', joinApp);
+document.getElementById('username-input').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') joinApp();
+});
+
+// ========================================
+// 4. DEVICE DETECTION
 // ========================================
 function getDeviceType() {
     const ua = navigator.userAgent;
@@ -40,55 +71,53 @@ const deviceType = getDeviceType();
 console.log('📱 Device detected:', deviceType);
 
 // ========================================
-// 4. MARKERS & LOCATION HISTORY
+// 5. LOCATION TRACKING
+// ========================================
+function startLocationTracking() {
+    if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(
+            (position) => {
+                const { latitude, longitude } = position.coords;
+                myLocation = { latitude, longitude };
+
+                socket.emit('send-location', {
+                    latitude,
+                    longitude,
+                    device: deviceType,
+                    username: username,
+                    userAgent: navigator.userAgent.slice(0, 50)
+                });
+
+                map.setView([latitude, longitude], 15);
+            },
+            (error) => {
+                console.error('❌ Geolocation error:', error);
+            }, {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
+        );
+    } else {
+        alert('❌ Geolocation is not supported by your browser.');
+    }
+}
+
+// ========================================
+// 6. MARKERS & LOCATION HISTORY
 // ========================================
 const markers = {};
 const locationHistory = {};
 
 // ========================================
-// 5. GEOLOCATION TRACKING
-// ========================================
-if (navigator.geolocation) {
-    navigator.geolocation.watchPosition(
-        (position) => {
-            const { latitude, longitude } = position.coords;
-            myLocation = { latitude, longitude };
-
-            // Send to server with device info
-            socket.emit('send-location', {
-                latitude,
-                longitude,
-                device: deviceType,
-                userAgent: navigator.userAgent.slice(0, 50)
-            });
-
-            // Center map on user (only if not already centered)
-            map.setView([latitude, longitude], 15);
-        },
-        (error) => {
-            console.error('❌ Geolocation error:', error);
-            // Don't alert, just log
-        }, {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0
-        }
-    );
-} else {
-    alert('❌ Geolocation is not supported by your browser.');
-}
-
-// ========================================
-// 6. RECEIVE LOCATION UPDATES
+// 7. RECEIVE LOCATION UPDATES
 // ========================================
 socket.on('update-location', (data) => {
     console.log('📍 Location update from:', data.id);
-    const { id, latitude, longitude, device, connectedAt } = data;
+    const { id, latitude, longitude, device, connectedAt, username: userName } = data;
 
-    // Don't create marker for self (we'll handle it differently)
     if (id === socket.id) return;
 
-    // Store history
     if (!locationHistory[id]) {
         locationHistory[id] = [];
     }
@@ -97,21 +126,18 @@ socket.on('update-location', (data) => {
         locationHistory[id].shift();
     }
 
-    // Update or create marker
     if (markers[id]) {
         markers[id].setLatLng([latitude, longitude]);
 
-        // Update popup with distance
-        updatePopupWithDistance(id, latitude, longitude, device, connectedAt);
+        // Update distance
+        if (myLocation) {
+            updatePopupWithDistance(id, latitude, longitude, device, connectedAt, userName);
+        }
 
-        // Update trail
-        if (locationHistory[id].length > 2) {
-            if (markers[id].trail) {
-                markers[id].trail.setLatLngs(locationHistory[id]);
-            }
+        if (locationHistory[id].length > 2 && markers[id].trail) {
+            markers[id].trail.setLatLngs(locationHistory[id]);
         }
     } else {
-        // Determine marker style based on device
         const isPhone = device && device.includes('Phone');
         const isTablet = device && device.includes('Tablet');
         const color = isPhone ? '#ff4757' : (isTablet ? '#2ed573' : '#1e90ff');
@@ -124,15 +150,15 @@ socket.on('update-location', (data) => {
             iconSize: [iconSize, iconSize]
         });
 
+        const displayName = userName || id.slice(0, 6);
         markers[id] = L.marker([latitude, longitude], { icon: customIcon })
             .addTo(map)
             .bindPopup(`
-                <b>👤 User:</b> ${id.slice(0, 6)}<br>
+                <b>👤 ${displayName}</b><br>
                 <b>📱 Device:</b> ${device || 'Unknown'}<br>
                 <b>⏱ Since:</b> ${connectedAt || 'Just now'}
             `);
 
-        // Add trail
         if (locationHistory[id].length > 2) {
             const trail = L.polyline(locationHistory[id], {
                 color: color,
@@ -146,7 +172,7 @@ socket.on('update-location', (data) => {
 });
 
 // ========================================
-// 7. CALCULATE DISTANCE
+// 8. CALCULATE DISTANCE
 // ========================================
 function calculateDistance(lat1, lon1, lat2, lon2) {
     const R = 6371;
@@ -160,7 +186,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     return R * c;
 }
 
-function updatePopupWithDistance(id, lat, lon, device, connectedAt) {
+function updatePopupWithDistance(id, lat, lon, device, connectedAt, userName) {
     if (!markers[id] || !myLocation) return;
 
     const dist = calculateDistance(
@@ -171,8 +197,9 @@ function updatePopupWithDistance(id, lat, lon, device, connectedAt) {
         `${(dist * 1000).toFixed(0)}m away` :
         `${dist.toFixed(2)}km away`;
 
+    const displayName = userName || id.slice(0, 6);
     markers[id].setPopupContent(`
-        <b>👤 User:</b> ${id.slice(0, 6)}<br>
+        <b>👤 ${displayName}</b><br>
         <b>📱 Device:</b> ${device || 'Unknown'}<br>
         <b>⏱ Since:</b> ${connectedAt || 'Just now'}<br>
         <b>📏 Distance:</b> ${distanceText}
@@ -180,7 +207,7 @@ function updatePopupWithDistance(id, lat, lon, device, connectedAt) {
 }
 
 // ========================================
-// 8. USER DISCONNECT
+// 9. USER DISCONNECT
 // ========================================
 socket.on('user-disconnected', (id) => {
     console.log('👋 User disconnected:', id);
@@ -195,14 +222,18 @@ socket.on('user-disconnected', (id) => {
 });
 
 // ========================================
-// 9. USER COUNT
+// 10. USER COUNT & JOIN SOUND
 // ========================================
 socket.on('user-count', (count) => {
     document.getElementById('count').textContent = count;
 });
 
+socket.on('user-joined', (data) => {
+    playSound('join');
+});
+
 // ========================================
-// 10. USER LIST (SIDEBAR) - FIXED
+// 11. USER LIST (SIDEBAR)
 // ========================================
 const userList = document.getElementById('user-list');
 
@@ -217,13 +248,13 @@ socket.on('user-list', (users) => {
     let html = '';
     let count = 0;
     for (const [id, data] of Object.entries(users)) {
-        // Skip self
         if (id === socket.id) continue;
         count++;
+        const displayName = data.username || id.slice(0, 6);
         html += `
             <div class="user-item">
                 <span class="user-device">${data.device || '💻'}</span>
-                <span class="user-id">${id.slice(0, 6)}</span>
+                <span class="user-name">${displayName}</span>
                 <span class="user-time">${data.connectedAt || ''}</span>
             </div>
         `;
@@ -236,11 +267,10 @@ socket.on('user-list', (users) => {
     }
 });
 
-// Request user list on load
 socket.emit('get-users');
 
 // ========================================
-// 11. CHAT FUNCTIONALITY - FIXED
+// 12. CHAT FUNCTIONALITY
 // ========================================
 const chatInput = document.getElementById('chat-input');
 const chatSend = document.getElementById('chat-send');
@@ -257,25 +287,19 @@ function sendMessage() {
         });
         chatInput.value = '';
 
-        // Add own message to chat immediately
+        // Add own message
         addMessageToChat('You', deviceType, new Date().toLocaleTimeString(), text, true);
     }
 }
 
 function addMessageToChat(user, device, timestamp, text, isOwn = false) {
-    // Remove "No messages" placeholder
     const noMsg = messagesDiv.querySelector('.no-messages');
     if (noMsg) noMsg.remove();
 
     const msgDiv = document.createElement('div');
-    msgDiv.className = 'message';
-    if (isOwn) {
-        msgDiv.style.background = '#2c3e50';
-        msgDiv.style.color = 'white';
-        msgDiv.style.marginLeft = '20px';
-    }
+    msgDiv.className = `message${isOwn ? ' own' : ''}`;
     msgDiv.innerHTML = `
-        <div class="msg-meta" style="${isOwn ? 'color:#aaa;' : ''}">
+        <div class="msg-meta">
             ${isOwn ? 'You' : user} · ${device || '💻'} · ${timestamp || ''}
         </div>
         <div class="msg-text">${text}</div>
@@ -291,8 +315,10 @@ chatInput.addEventListener('keypress', (e) => {
 
 socket.on('chat-message', (data) => {
     console.log('💬 Received message from:', data.userId);
+    playSound('message');
+    const displayName = data.username || data.userId || 'Unknown';
     addMessageToChat(
-        data.userId || 'Unknown',
+        displayName,
         data.device || '💻',
         data.timestamp || '',
         data.text,
@@ -301,11 +327,11 @@ socket.on('chat-message', (data) => {
 });
 
 // ========================================
-// 12. SOS BUTTON - FIXED
+// 13. SOS BUTTON
 // ========================================
 document.getElementById('sos-button').addEventListener('click', () => {
     if (!myLocation) {
-        alert('❌ Please wait, getting your location...');
+        alert('⏳ Getting your location...');
         return;
     }
 
@@ -328,15 +354,14 @@ document.getElementById('sos-button').addEventListener('click', () => {
         btn.style.transform = 'scale(1)';
     }, 1000);
 
-    // Show alert to sender
     alert('🚨 SOS Alert sent to all online users!');
 });
 
 socket.on('sos-alert', (data) => {
     console.log('🚨 SOS ALERT RECEIVED from:', data.userId);
+    playSound('sos');
 
     // Flash screen red
-    const originalBg = document.body.style.backgroundColor;
     document.body.style.backgroundColor = '#ff000055';
     document.body.style.transition = 'background-color 0.1s';
 
@@ -355,16 +380,12 @@ socket.on('sos-alert', (data) => {
         }
     }, 300);
 
-    // Show alert
-    alert(`🚨🚨🚨 SOS ALERT! 🚨🚨🚨\n\nUser: ${data.userId || 'Unknown'}\nDevice: ${data.device || 'Unknown'}\nTime: ${data.time || 'Just now'}\n\n📍 Location shared! Check map!`);
+    const displayName = data.username || data.userId || 'Unknown';
+    alert(`🚨🚨🚨 SOS ALERT! 🚨🚨🚨\n\nUser: ${displayName}\nDevice: ${data.device || 'Unknown'}\nTime: ${data.time || 'Just now'}\n\n📍 Location shared! Check map!`);
 
-    // Fly map to SOS location
     if (data.latitude && data.longitude) {
-        map.flyTo([data.latitude, data.longitude], 17, {
-            duration: 2
-        });
+        map.flyTo([data.latitude, data.longitude], 17, { duration: 2 });
 
-        // Add a special SOS marker
         const sosIcon = L.divIcon({
             className: 'sos-marker',
             html: `<div style="background:#ff0000;width:30px;height:30px;border-radius:50%;border:4px solid white;box-shadow:0 0 30px rgba(255,0,0,0.8);display:flex;align-items:center;justify-content:center;font-size:20px;animation:pulse 1s infinite;">🆘</div>`,
@@ -375,13 +396,12 @@ socket.on('sos-alert', (data) => {
             .addTo(map)
             .bindPopup(`
                 <b style="color:red;">🚨 SOS ALERT!</b><br>
-                <b>User:</b> ${data.userId || 'Unknown'}<br>
+                <b>User:</b> ${displayName}<br>
                 <b>Device:</b> ${data.device || 'Unknown'}<br>
                 <b>Time:</b> ${data.time || 'Just now'}
             `)
             .openPopup();
 
-        // Remove SOS marker after 30 seconds
         setTimeout(() => {
             map.removeLayer(sosMarker);
         }, 30000);
@@ -389,7 +409,29 @@ socket.on('sos-alert', (data) => {
 });
 
 // ========================================
-// 13. DARK MODE TOGGLE
+// 14. MAP LAYER TOGGLES
+// ========================================
+const mapToggle = document.getElementById('map-toggle');
+
+mapToggle.addEventListener('click', () => {
+    map.removeLayer(streetLayer);
+    map.removeLayer(satelliteLayer);
+
+    if (currentLayer === 'street') {
+        satelliteLayer.addTo(map);
+        currentLayer = 'satellite';
+        mapToggle.textContent = '🌍 Street View';
+        mapToggle.style.background = '#1a252f';
+    } else {
+        streetLayer.addTo(map);
+        currentLayer = 'street';
+        mapToggle.textContent = '🛰️ Satellite';
+        mapToggle.style.background = '#2c3e50';
+    }
+});
+
+// ========================================
+// 15. DARK MODE TOGGLE
 // ========================================
 const darkToggle = document.getElementById('dark-toggle');
 let darkMode = false;
@@ -401,7 +443,23 @@ darkToggle.addEventListener('click', () => {
 });
 
 // ========================================
-// 14. MAP CLICK: ADD TEMPORARY MARKER
+// 16. SOUND EFFECTS
+// ========================================
+function playSound(type) {
+    const sounds = {
+        message: document.getElementById('sound-message'),
+        sos: document.getElementById('sound-sos'),
+        join: document.getElementById('sound-join')
+    };
+    const audio = sounds[type];
+    if (audio) {
+        audio.currentTime = 0;
+        audio.play().catch(() => {});
+    }
+}
+
+// ========================================
+// 17. MAP CLICK - TEMPORARY MARKER
 // ========================================
 map.on('click', (e) => {
     const { lat, lng } = e.latlng;
@@ -417,29 +475,30 @@ map.on('click', (e) => {
         .bindPopup(`📍 Clicked location<br>Lat: ${lat.toFixed(4)}<br>Lng: ${lng.toFixed(4)}`)
         .openPopup();
 
-    // Remove after 5 seconds
     setTimeout(() => {
         map.removeLayer(tempMarker);
     }, 5000);
 });
 
 // ========================================
-// 15. KEYBOARD SHORTCUTS
+// 18. KEYBOARD SHORTCUTS
 // ========================================
 document.addEventListener('keydown', (e) => {
-    // Ctrl+Shift+D = Toggle dark mode
     if (e.ctrlKey && e.shiftKey && e.key === 'D') {
         e.preventDefault();
         darkToggle.click();
     }
 
-    // Ctrl+Shift+S = SOS
     if (e.ctrlKey && e.shiftKey && e.key === 'S') {
         e.preventDefault();
         document.getElementById('sos-button').click();
     }
 
-    // Escape = Close all popups
+    if (e.ctrlKey && e.shiftKey && e.key === 'M') {
+        e.preventDefault();
+        mapToggle.click();
+    }
+
     if (e.key === 'Escape') {
         map.closePopup();
     }
@@ -447,4 +506,5 @@ document.addEventListener('keydown', (e) => {
 
 console.log('🚀 App loaded successfully!');
 console.log('📱 Device:', deviceType);
-console.log('⌨️ Shortcuts: Ctrl+Shift+D (Dark Mode), Ctrl+Shift+S (SOS)');
+console.log('👤 Username:', username);
+console.log('⌨️ Shortcuts: Ctrl+Shift+D (Dark Mode), Ctrl+Shift+S (SOS), Ctrl+Shift+M (Map)');

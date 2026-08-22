@@ -16,6 +16,7 @@ app.use(express.static('public'));
 
 // Store users with their details
 let users = {};
+let previousCount = 0;
 
 // When a client connects
 io.on('connection', (socket) => {
@@ -23,6 +24,14 @@ io.on('connection', (socket) => {
 
     // Send current user list to the new user
     socket.emit('user-list', users);
+
+    // Handle username setting
+    socket.on('set-username', (username) => {
+        if (users[socket.id]) {
+            users[socket.id].username = username || 'Anonymous';
+            io.emit('user-list', users);
+        }
+    });
 
     // When user sends their location
     socket.on('send-location', (data) => {
@@ -33,6 +42,7 @@ io.on('connection', (socket) => {
             longitude: data.longitude,
             device: data.device || '💻 Unknown',
             connectedAt: new Date().toLocaleTimeString(),
+            username: data.username || 'Anonymous',
             userAgent: data.userAgent || 'Unknown'
         };
 
@@ -42,12 +52,20 @@ io.on('connection', (socket) => {
             latitude: data.latitude,
             longitude: data.longitude,
             device: users[socket.id].device,
-            connectedAt: users[socket.id].connectedAt
+            connectedAt: users[socket.id].connectedAt,
+            username: users[socket.id].username
         });
 
         // Update user list for everyone
         io.emit('user-list', users);
-        io.emit('user-count', Object.keys(users).length);
+        const count = Object.keys(users).length;
+        io.emit('user-count', count);
+
+        // Play join sound if someone new joined
+        if (count > previousCount) {
+            io.emit('user-joined', { username: users[socket.id].username });
+        }
+        previousCount = count;
     });
 
     // Handle chat messages
@@ -55,17 +73,18 @@ io.on('connection', (socket) => {
         console.log(`💬 Chat from ${socket.id}:`, data.text);
         io.emit('chat-message', {
             ...data,
-            userId: socket.id.slice(0, 6)
+            userId: socket.id.slice(0, 6),
+            username: users[socket.id] ? .username || 'Anonymous'
         });
     });
 
     // Handle SOS alerts
     socket.on('sos-alert', (data) => {
         console.log(`🚨 SOS ALERT from ${socket.id}!`);
-        // Broadcast SOS to ALL users including sender
         io.emit('sos-alert', {
             ...data,
             userId: socket.id.slice(0, 6),
+            username: users[socket.id] ? .username || 'Anonymous',
             socketId: socket.id
         });
     });
@@ -81,14 +100,16 @@ io.on('connection', (socket) => {
         delete users[socket.id];
         io.emit('user-disconnected', socket.id);
         io.emit('user-list', users);
-        io.emit('user-count', Object.keys(users).length);
-        console.log('📊 Users online:', Object.keys(users).length);
+        const count = Object.keys(users).length;
+        io.emit('user-count', count);
+        previousCount = count;
+        console.log('📊 Users online:', count);
     });
 });
 
 // Start server
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
+const PORT = process.env.PORT || 8080;
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
     console.log(`📊 Waiting for connections...`);
 });

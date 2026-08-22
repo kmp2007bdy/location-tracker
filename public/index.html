@@ -7,15 +7,41 @@
     <title>Live Location Tracker</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Audio for notifications -->
+    <audio id="sound-message" preload="auto">
+        <source src="https://www.soundjay.com/communication/electronic-chime-1-124506.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="sound-sos" preload="auto">
+        <source src="https://www.soundjay.com/emergency/air-raid-siren-1-102598.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="sound-join" preload="auto">
+        <source src="https://www.soundjay.com/communication/drop-1-101443.mp3" type="audio/mpeg">
+    </audio>
 </head>
 
 <body>
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-screen">
+        <div class="login-box">
+            <h2>👋 Welcome!</h2>
+            <p>Enter your name to join the location tracker</p>
+            <input type="text" id="username-input" placeholder="Enter your name..." class="login-input">
+            <button id="join-btn" class="login-btn">Join Now</button>
+        </div>
+    </div>
+
     <!-- Header -->
     <h1>📍 Live Location Tracker</h1>
 
     <!-- Dark Mode Toggle -->
     <button id="dark-toggle" class="dark-toggle">
         🌙 Dark Mode
+    </button>
+
+    <!-- Map Toggle -->
+    <button id="map-toggle" class="map-toggle">
+        🛰️ Satellite
     </button>
 
     <!-- User Counter -->
