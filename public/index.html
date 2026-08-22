@@ -1,79 +1,93 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Live Location Tracker</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
-    <audio id="sound-message" preload="auto">
-        <source src="https://www.soundjay.com/communication/electronic-chime-1-124506.mp3" type="audio/mpeg">
-    </audio>
-    <audio id="sound-sos" preload="auto">
-        <source src="https://www.soundjay.com/emergency/air-raid-siren-1-102598.mp3" type="audio/mpeg">
-    </audio>
-    <audio id="sound-join" preload="auto">
-        <source src="https://www.soundjay.com/communication/drop-1-101443.mp3" type="audio/mpeg">
-    </audio>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Location Tracker</title>
+    <style>
+        body { margin:0; font-family:Arial; display:flex; justify-content:center; align-items:center; height:100vh; background:#1a1a2e; }
+        .login-box { background:white; padding:40px; border-radius:16px; text-align:center; max-width:400px; width:90%; }
+        input { width:100%; padding:14px; border:2px solid #ddd; border-radius:8px; font-size:18px; margin-bottom:15px; }
+        button { width:100%; padding:14px; background:#2c3e50; color:white; border:none; border-radius:8px; font-size:18px; cursor:pointer; }
+        .fallback { background:#ff4757; margin-top:10px; }
+        button:active { transform:scale(0.95); }
+    </style>
 </head>
 <body>
-    <!-- Login Screen -->
-    <div id="login-screen" class="login-screen">
-        <div class="login-box">
-            <div style="font-size:48px;margin-bottom:10px;">👋</div>
-            <h2>Welcome!</h2>
-            <p>Enter your name to join</p>
-            
-            <!-- Input field -->
-            <input type="text" id="username-input" placeholder="Your name..." class="login-input" autofocus>
-            
-            <!-- Primary Join Button -->
-            <button id="join-btn" class="login-btn" onclick="handleJoin()">Join Now 🚀</button>
-            
-            <!-- FALLBACK: Big red button that ALWAYS works -->
-            <button id="fallback-join-btn" style="width:100%;padding:16px;background:#ff4757;color:white;border:none;border-radius:12px;font-size:20px;margin-top:12px;cursor:pointer;touch-action:manipulation;min-height:60px;" onclick="handleJoin()">
-                📱 TAP HERE TO JOIN
-            </button>
-            
-            <div style="margin-top:15px;font-size:12px;color:#999;">
-                Press Enter or tap Join
-            </div>
-        </div>
+    <div id="login-screen" class="login-box">
+        <h2>👋 Welcome!</h2>
+        <p>Enter your name:</p>
+        <input type="text" id="username-input" placeholder="Your name..." autofocus>
+        <button id="join-btn" onclick="joinApp()">Join Now 🚀</button>
+        <button class="fallback" onclick="joinApp()">📱 TAP HERE TO JOIN</button>
+        <p style="margin-top:15px;font-size:12px;color:#999;">Click the red button if the blue one doesn't work</p>
     </div>
 
-    <h1>📍 Live Location Tracker</h1>
-
-    <button id="dark-toggle" class="dark-toggle">🌙 Dark Mode</button>
-
-    <div id="map-style-selector" class="map-style-selector">
-        <button class="map-style-btn active" data-layer="carto">🗺️ Street</button>
-        <button class="map-style-btn" data-layer="satellite">🛰️ Satellite</button>
-        <button class="map-style-btn" data-layer="osm">🌍 OpenStreet</button>
-        <button class="map-style-btn" data-layer="dark">🌙 Dark Map</button>
-    </div>
-
-    <div id="user-count" class="user-count">👥 <span id="count">0</span> users online</div>
-    <div id="map"></div>
-
-    <div id="sidebar" class="sidebar">
-        <h4>👥 Online Users</h4>
-        <div id="user-list"><div class="no-users">Loading...</div></div>
-    </div>
-
-    <div id="chat-container" class="chat-container">
-        <div class="chat-header">💬 Live Chat</div>
-        <div id="messages" class="chat-messages"><div class="no-messages">💬 Say hello!</div></div>
-        <div class="chat-input-area">
-            <input type="text" id="chat-input" placeholder="Type a message..." class="chat-input">
-            <button id="chat-send" class="chat-send">Send</button>
-        </div>
-    </div>
-
-    <button id="sos-button" class="sos-button">🆘</button>
+    <div id="map" style="width:100%;height:100%;position:fixed;top:0;left:0;z-index:0;"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="/socket.io/socket.io.js"></script>
-    <script src="script.js"></script>
+    <script>
+        console.log('🚀 App starting...');
+        
+        // ===== SIMPLE JOIN FUNCTION =====
+        function joinApp() {
+            console.log('🔥 joinApp called!');
+            const input = document.getElementById('username-input');
+            const username = input.value.trim() || 'Anonymous';
+            console.log('👤 Username:', username);
+            
+            // Hide login
+            document.getElementById('login-screen').style.display = 'none';
+            
+            // Connect to socket and send username
+            const socket = io();
+            socket.emit('set-username', username);
+            
+            // Start location tracking
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(
+                    (pos) => {
+                        const { latitude, longitude } = pos.coords;
+                        socket.emit('send-location', {
+                            latitude,
+                            longitude,
+                            device: '📱 Phone',
+                            username: username
+                        });
+                    },
+                    (err) => console.error('Location error:', err),
+                    { enableHighAccuracy: true }
+                );
+            }
+            
+            // Show map
+            const map = L.map('map').setView([40.7128, -74.0060], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+            
+            console.log('✅ Login successful!');
+            alert('✅ Login successful! Welcome ' + username);
+        }
+        
+        // Auto-focus on load
+        setTimeout(() => {
+            document.getElementById('username-input').focus();
+        }, 500);
+        
+        // Enter key support
+        document.getElementById('username-input').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                joinApp();
+            }
+        });
+        
+        // Make function global
+        window.joinApp = joinApp;
+        
+        console.log('✅ App ready! Click the red button to join.');
+    </script>
 </body>
 </html>
