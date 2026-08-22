@@ -617,3 +617,67 @@ console.log('  Ctrl+Shift+3 = OpenStreetMap');
 console.log('  Ctrl+Shift+4 = Dark Map');
 console.log('  Escape = Close popups');
 console.log('📱 Mobile support enabled!');
+// ========================================
+// FIX: Force join function for mobile
+// ========================================
+function handleJoin() {
+    console.log('🔥 Join button clicked! (handleJoin)');
+    const input = document.getElementById('username-input');
+    const username = input.value.trim() || 'Anonymous';
+    console.log('📝 Username:', username);
+    
+    // Hide login screen
+    const loginScreen = document.getElementById('login-screen');
+    if (loginScreen) {
+        loginScreen.style.display = 'none';
+    }
+    
+    // Send username to server
+    socket.emit('set-username', username);
+    
+    // Start location tracking
+    startLocationTracking();
+}
+
+// Also add a direct click handler
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 DOM loaded!');
+    
+    // Direct click handler for all buttons
+    const buttons = document.querySelectorAll('button');
+    buttons.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            console.log('🔘 Button clicked:', this.id || this.className);
+        });
+        btn.addEventListener('touchstart', function(e) {
+            console.log('👆 Button touched:', this.id || this.className);
+        });
+    });
+    
+    // Force the join button to work
+    const joinBtn = document.getElementById('join-btn');
+    if (joinBtn) {
+        joinBtn.onclick = handleJoin;
+        joinBtn.ontouchstart = handleJoin;
+    }
+    
+    const fallbackBtn = document.getElementById('join-btn-fallback');
+    if (fallbackBtn) {
+        fallbackBtn.onclick = handleJoin;
+        fallbackBtn.ontouchstart = handleJoin;
+    }
+    
+    // Auto-focus the input on mobile
+    const input = document.getElementById('username-input');
+    if (input) {
+        setTimeout(() => {
+            input.focus();
+        }, 500);
+    }
+});
+
+// Make sure the function is globally available
+window.handleJoin = handleJoin;
+window.joinApp = handleJoin;
+
+console.log('✅ Mobile join fix loaded!');
