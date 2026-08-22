@@ -87,12 +87,14 @@ body {
     font-size: 18px !important;
     cursor: pointer !important;
     min-height: 50px !important;
-    transition: background 0.3s, transform 0.1s;
+    transition: all 0.3s !important;
+    touch-action: manipulation !important;
     -webkit-tap-highlight-color: transparent !important;
+    user-select: none !important;
 }
 
 .login-btn:active {
-    transform: scale(0.95);
+    transform: scale(0.95) !important;
     background: #1a252f !important;
 }
 
@@ -144,6 +146,7 @@ h1 {
     font-size: 14px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
     transition: all 0.3s;
+    touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
 }
 
@@ -185,6 +188,7 @@ h1 {
     transition: all 0.3s;
     text-align: left;
     white-space: nowrap;
+    touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
 }
 
@@ -393,6 +397,7 @@ h1 {
     font-size: 13px;
     transition: background 0.3s;
     white-space: nowrap;
+    touch-action: manipulation;
 }
 
 .chat-send:hover {
@@ -422,6 +427,7 @@ h1 {
     display: flex;
     align-items: center;
     justify-content: center;
+    touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
 }
 
@@ -661,6 +667,16 @@ body.dark-mode ::-webkit-scrollbar-thumb:hover {
 }
 
 
+/* ===== UNIVERSAL BUTTON FIXES ===== */
+
+button {
+    touch-action: manipulation !important;
+    cursor: pointer !important;
+    -webkit-tap-highlight-color: transparent !important;
+    user-select: none !important;
+}
+
+
 /* ===== RESPONSIVE ===== */
 
 @media (max-width: 768px) {
@@ -674,12 +690,13 @@ body.dark-mode ::-webkit-scrollbar-thumb:hover {
     .login-input {
         font-size: 18px !important;
         padding: 14px 16px !important;
-        min-height: 50px !important;
+        min-height: 55px !important;
     }
     .login-btn {
-        font-size: 18px !important;
-        padding: 14px !important;
-        min-height: 50px !important;
+        font-size: 20px !important;
+        padding: 16px !important;
+        min-height: 60px !important;
+        border-radius: 12px !important;
     }
     .sidebar {
         width: 180px;
