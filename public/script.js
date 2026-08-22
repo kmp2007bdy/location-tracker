@@ -54,78 +54,75 @@ let myLocation = null;
 let username = '';
 let previousCount = 0;
 
-socket.on('connect', () => console.log('✅ Connected to server'));
-socket.on('disconnect', () => console.log('❌ Disconnected from server'));
+socket.on('connect', () => console.log('✅ Connected'));
+socket.on('disconnect', () => console.log('❌ Disconnected'));
 
 // ========================================
-// 5. UNIVERSAL JOIN FUNCTION
+// 5. FORCE JOIN FUNCTION (Works on ALL devices)
 // ========================================
-function joinApp() {
-    console.log('🔥 joinApp() called');
+function handleJoin() {
+    console.log('🔥 handleJoin() called!');
     const input = document.getElementById('username-input');
     username = input.value.trim() || 'Anonymous';
-
-    console.log('👤 Joining as:', username);
-
+    
+    console.log('👤 Username:', username);
+    
     // Hide login screen
     const loginScreen = document.getElementById('login-screen');
     if (loginScreen) {
         loginScreen.style.display = 'none';
     }
-
+    
     // Send username to server
     socket.emit('set-username', username);
-
+    
     // Start location tracking
-    if (typeof startLocationTracking === 'function') {
-        startLocationTracking();
-    }
+    startLocationTracking();
 }
 
+// Make it globally accessible
+window.handleJoin = handleJoin;
+
 // ========================================
-// 6. EVENT LISTENERS (Works on ALL devices)
+// 6. EVENT LISTENERS
 // ========================================
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 DOM ready!');
-
+    
     const joinBtn = document.getElementById('join-btn');
+    const fallbackBtn = document.getElementById('fallback-join-btn');
     const usernameInput = document.getElementById('username-input');
-
-    // Click works on desktop AND mobile
+    
+    // Direct click handlers
     if (joinBtn) {
-        joinBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            console.log('🖱️ Join button clicked');
-            joinApp();
-        });
-
-        // Touch support for mobile (won't fire twice)
-        joinBtn.addEventListener('touchstart', function(e) {
-            e.preventDefault();
-            console.log('👆 Join button touched');
-            joinApp();
-        }, { passive: false });
+        joinBtn.onclick = handleJoin;
+        joinBtn.ontouchstart = handleJoin;
     }
-
+    
+    if (fallbackBtn) {
+        fallbackBtn.onclick = handleJoin;
+        fallbackBtn.ontouchstart = handleJoin;
+    }
+    
     // Enter key support
     if (usernameInput) {
-        usernameInput.addEventListener('keydown', function(e) {
+        usernameInput.onkeydown = function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                console.log('⌨️ Enter key pressed');
-                joinApp();
+                handleJoin();
             }
-        });
-
-        // Auto-focus on mobile
-        setTimeout(() => {
+        };
+    }
+    
+    // Auto-focus on mobile
+    setTimeout(() => {
+        if (usernameInput) {
             usernameInput.focus();
-            // On mobile, show keyboard
             if (window.innerWidth < 768) {
                 usernameInput.click();
             }
-        }, 300);
-    }
+        }
+    }, 500);
 });
 
 // ========================================
@@ -159,7 +156,8 @@ function startLocationTracking() {
                 });
                 map.setView([latitude, longitude], 15);
             },
-            (error) => console.error('Geolocation error:', error), { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            (error) => console.error('Geolocation error:', error),
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
     } else {
         alert('❌ Geolocation not supported.');
@@ -167,22 +165,19 @@ function startLocationTracking() {
 }
 
 // ========================================
-// 9. MARKERS & LOCATION HISTORY
+// 9. MARKERS
 // ========================================
 const markers = {};
 const locationHistory = {};
 
-// ========================================
-// 10. RECEIVE LOCATION UPDATES
-// ========================================
 socket.on('update-location', (data) => {
     const { id, latitude, longitude, device, connectedAt, username: userName } = data;
     if (id === socket.id) return;
-
+    
     if (!locationHistory[id]) locationHistory[id] = [];
     locationHistory[id].push([latitude, longitude]);
     if (locationHistory[id].length > 50) locationHistory[id].shift();
-
+    
     if (markers[id]) {
         markers[id].setLatLng([latitude, longitude]);
         if (locationHistory[id].length > 2 && markers[id].trail) {
@@ -203,18 +198,12 @@ socket.on('update-location', (data) => {
             .bindPopup(`<b>👤 ${userName || id.slice(0, 6)}</b><br>📱 ${device || 'Unknown'}`);
         if (locationHistory[id].length > 2) {
             markers[id].trail = L.polyline(locationHistory[id], {
-                color: color,
-                weight: 2,
-                opacity: 0.4,
-                dashArray: '5, 5'
+                color: color, weight: 2, opacity: 0.4, dashArray: '5, 5'
             }).addTo(map);
         }
     }
 });
 
-// ========================================
-// 11. USER DISCONNECT
-// ========================================
 socket.on('user-disconnected', (id) => {
     if (markers[id]) {
         if (markers[id].trail) map.removeLayer(markers[id].trail);
@@ -225,7 +214,7 @@ socket.on('user-disconnected', (id) => {
 });
 
 // ========================================
-// 12. USER COUNT & LIST
+// 10. USER COUNT & LIST
 // ========================================
 socket.on('user-count', (count) => {
     document.getElementById('count').textContent = count;
@@ -254,7 +243,7 @@ socket.on('user-list', (users) => {
 socket.emit('get-users');
 
 // ========================================
-// 13. CHAT
+// 11. CHAT
 // ========================================
 const chatInput = document.getElementById('chat-input');
 const chatSend = document.getElementById('chat-send');
@@ -288,7 +277,7 @@ socket.on('chat-message', (data) => {
 });
 
 // ========================================
-// 14. SOS
+// 12. SOS
 // ========================================
 document.getElementById('sos-button').addEventListener('click', function(e) {
     e.preventDefault();
@@ -300,11 +289,6 @@ document.getElementById('sos-button').addEventListener('click', function(e) {
         time: new Date().toLocaleTimeString()
     });
     alert('🚨 SOS Alert sent!');
-});
-
-document.getElementById('sos-button').addEventListener('touchstart', function(e) {
-    e.preventDefault();
-    this.click();
 });
 
 socket.on('sos-alert', (data) => {
@@ -328,7 +312,7 @@ socket.on('sos-alert', (data) => {
 });
 
 // ========================================
-// 15. DARK MODE
+// 13. DARK MODE
 // ========================================
 const darkToggle = document.getElementById('dark-toggle');
 let darkMode = false;
@@ -338,13 +322,9 @@ darkToggle.addEventListener('click', function(e) {
     document.body.classList.toggle('dark-mode');
     darkToggle.textContent = darkMode ? '☀️ Light Mode' : '🌙 Dark Mode';
 });
-darkToggle.addEventListener('touchstart', function(e) {
-    e.preventDefault();
-    this.click();
-});
 
 // ========================================
-// 16. SOUNDS
+// 14. SOUNDS
 // ========================================
 function playSound(type) {
     const sounds = {
@@ -360,20 +340,20 @@ function playSound(type) {
 }
 
 // ========================================
-// 17. MAP CLICK - ADDRESS
+// 15. MAP CLICK - ADDRESS
 // ========================================
 map.on('click', async function(e) {
-            const { lat, lng } = e.latlng;
-            const popup = L.popup().setLatLng([lat, lng]).setContent('🔍 Getting address...').openOn(map);
-            try {
-                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
-                const data = await response.json();
-                if (data && data.display_name) {
-                    const parts = data.display_name.split(',');
-                    const streetName = parts[0] || 'Unknown street';
-                    const city = parts[1] || '';
-                    const country = parts[parts.length - 1] || '';
-                    popup.setContent(`<b>📍 ${streetName}</b><br>${city ? `${city.trim()}, ` : ''}${country.trim()}<br><small style="color:#666;">Click again to search</small>`);
+    const { lat, lng } = e.latlng;
+    const popup = L.popup().setLatLng([lat, lng]).setContent('🔍 Getting address...').openOn(map);
+    try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
+        const data = await response.json();
+        if (data && data.display_name) {
+            const parts = data.display_name.split(',');
+            const streetName = parts[0] || 'Unknown street';
+            const city = parts[1] || '';
+            const country = parts[parts.length - 1] || '';
+            popup.setContent(`<b>📍 ${streetName}</b><br>${city ? `${city.trim()}, ` : ''}${country.trim()}<br><small style="color:#666;">Click again to search</small>`);
         } else {
             popup.setContent(`📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
         }
@@ -384,7 +364,7 @@ map.on('click', async function(e) {
 });
 
 // ========================================
-// 18. KEYBOARD SHORTCUTS
+// 16. KEYBOARD SHORTCUTS
 // ========================================
 document.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.shiftKey && e.key === 'D') { e.preventDefault(); darkToggle.click(); }
@@ -398,5 +378,4 @@ document.addEventListener('keydown', (e) => {
 
 console.log('🚀 App loaded!');
 console.log('📱 Device:', deviceType);
-console.log('⌨️ Shortcuts: Ctrl+Shift+D (Dark), Ctrl+Shift+S (SOS), Ctrl+Shift+1-4 (Maps)');
-console.log('✅ Universal join support enabled!');
+console.log('✅ Mobile join support enabled!');

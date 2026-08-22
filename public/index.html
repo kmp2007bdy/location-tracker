@@ -1,14 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Live Location Tracker</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
-    <!-- Audio for notifications -->
+    
     <audio id="sound-message" preload="auto">
         <source src="https://www.soundjay.com/communication/electronic-chime-1-124506.mp3" type="audio/mpeg">
     </audio>
@@ -19,29 +17,35 @@
         <source src="https://www.soundjay.com/communication/drop-1-101443.mp3" type="audio/mpeg">
     </audio>
 </head>
-
 <body>
-    <!-- Login Screen - Universal -->
+    <!-- Login Screen -->
     <div id="login-screen" class="login-screen">
         <div class="login-box">
             <div style="font-size:48px;margin-bottom:10px;">👋</div>
             <h2>Welcome!</h2>
             <p>Enter your name to join</p>
+            
+            <!-- Input field -->
             <input type="text" id="username-input" placeholder="Your name..." class="login-input" autofocus>
-            <button id="join-btn" class="login-btn">Join Now 🚀</button>
+            
+            <!-- Primary Join Button -->
+            <button id="join-btn" class="login-btn" onclick="handleJoin()">Join Now 🚀</button>
+            
+            <!-- FALLBACK: Big red button that ALWAYS works -->
+            <button id="fallback-join-btn" style="width:100%;padding:16px;background:#ff4757;color:white;border:none;border-radius:12px;font-size:20px;margin-top:12px;cursor:pointer;touch-action:manipulation;min-height:60px;" onclick="handleJoin()">
+                📱 TAP HERE TO JOIN
+            </button>
+            
             <div style="margin-top:15px;font-size:12px;color:#999;">
                 Press Enter or tap Join
             </div>
         </div>
     </div>
 
-    <!-- Header -->
     <h1>📍 Live Location Tracker</h1>
 
-    <!-- Dark Mode Toggle -->
     <button id="dark-toggle" class="dark-toggle">🌙 Dark Mode</button>
 
-    <!-- Map Style Selector -->
     <div id="map-style-selector" class="map-style-selector">
         <button class="map-style-btn active" data-layer="carto">🗺️ Street</button>
         <button class="map-style-btn" data-layer="satellite">🛰️ Satellite</button>
@@ -49,41 +53,27 @@
         <button class="map-style-btn" data-layer="dark">🌙 Dark Map</button>
     </div>
 
-    <!-- User Counter -->
     <div id="user-count" class="user-count">👥 <span id="count">0</span> users online</div>
-
-    <!-- Map Container -->
     <div id="map"></div>
 
-    <!-- Sidebar: Online Users -->
     <div id="sidebar" class="sidebar">
         <h4>👥 Online Users</h4>
-        <div id="user-list">
-            <div class="no-users">Loading...</div>
-        </div>
+        <div id="user-list"><div class="no-users">Loading...</div></div>
     </div>
 
-    <!-- Chat Box -->
     <div id="chat-container" class="chat-container">
         <div class="chat-header">💬 Live Chat</div>
-        <div id="messages" class="chat-messages">
-            <div class="no-messages">💬 Say hello!</div>
-        </div>
+        <div id="messages" class="chat-messages"><div class="no-messages">💬 Say hello!</div></div>
         <div class="chat-input-area">
             <input type="text" id="chat-input" placeholder="Type a message..." class="chat-input">
             <button id="chat-send" class="chat-send">Send</button>
         </div>
     </div>
 
-    <!-- SOS Button -->
     <button id="sos-button" class="sos-button">🆘</button>
 
-    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Socket.IO client -->
     <script src="/socket.io/socket.io.js"></script>
-    <!-- Your custom script -->
     <script src="script.js"></script>
 </body>
-
 </html>
