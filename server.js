@@ -11,6 +11,14 @@ const io = socketIo(server, {
     }
 });
 
+// ===== PREVENT CACHING =====
+app.use((req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    next();
+});
+
 app.use(express.static('public'));
 
 let users = {};
