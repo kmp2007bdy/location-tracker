@@ -4,7 +4,7 @@
 const map = L.map('map').setView([40.7128, -74.0060], 13);
 
 // ========================================
-// 2. MAP LAYERS
+// 2. MAP LAYERS (With Street Names)
 // ========================================
 const mapLayers = {
     carto: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
@@ -58,7 +58,7 @@ socket.on('connect', () => console.log('✅ Connected'));
 socket.on('disconnect', () => console.log('❌ Disconnected'));
 
 // ========================================
-// 5. FORCE JOIN FUNCTION (Works on ALL devices)
+// 5. UNIVERSAL JOIN FUNCTION (Works on ALL devices)
 // ========================================
 function handleJoin() {
     console.log('🔥 handleJoin() called!');
@@ -84,7 +84,7 @@ function handleJoin() {
 window.handleJoin = handleJoin;
 
 // ========================================
-// 6. EVENT LISTENERS
+// 6. EVENT LISTENERS (Works on ALL devices)
 // ========================================
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 DOM ready!');
@@ -165,11 +165,14 @@ function startLocationTracking() {
 }
 
 // ========================================
-// 9. MARKERS
+// 9. MARKERS & LOCATION HISTORY
 // ========================================
 const markers = {};
 const locationHistory = {};
 
+// ========================================
+// 10. RECEIVE LOCATION UPDATES
+// ========================================
 socket.on('update-location', (data) => {
     const { id, latitude, longitude, device, connectedAt, username: userName } = data;
     if (id === socket.id) return;
@@ -204,6 +207,9 @@ socket.on('update-location', (data) => {
     }
 });
 
+// ========================================
+// 11. USER DISCONNECT
+// ========================================
 socket.on('user-disconnected', (id) => {
     if (markers[id]) {
         if (markers[id].trail) map.removeLayer(markers[id].trail);
@@ -214,7 +220,7 @@ socket.on('user-disconnected', (id) => {
 });
 
 // ========================================
-// 10. USER COUNT & LIST
+// 12. USER COUNT & LIST
 // ========================================
 socket.on('user-count', (count) => {
     document.getElementById('count').textContent = count;
@@ -243,7 +249,7 @@ socket.on('user-list', (users) => {
 socket.emit('get-users');
 
 // ========================================
-// 11. CHAT
+// 13. CHAT
 // ========================================
 const chatInput = document.getElementById('chat-input');
 const chatSend = document.getElementById('chat-send');
@@ -277,7 +283,7 @@ socket.on('chat-message', (data) => {
 });
 
 // ========================================
-// 12. SOS
+// 14. SOS
 // ========================================
 document.getElementById('sos-button').addEventListener('click', function(e) {
     e.preventDefault();
@@ -312,7 +318,7 @@ socket.on('sos-alert', (data) => {
 });
 
 // ========================================
-// 13. DARK MODE
+// 15. DARK MODE
 // ========================================
 const darkToggle = document.getElementById('dark-toggle');
 let darkMode = false;
@@ -324,7 +330,7 @@ darkToggle.addEventListener('click', function(e) {
 });
 
 // ========================================
-// 14. SOUNDS
+// 16. SOUNDS
 // ========================================
 function playSound(type) {
     const sounds = {
@@ -340,7 +346,7 @@ function playSound(type) {
 }
 
 // ========================================
-// 15. MAP CLICK - ADDRESS
+// 17. MAP CLICK - ADDRESS
 // ========================================
 map.on('click', async function(e) {
     const { lat, lng } = e.latlng;
@@ -364,7 +370,7 @@ map.on('click', async function(e) {
 });
 
 // ========================================
-// 16. KEYBOARD SHORTCUTS
+// 18. KEYBOARD SHORTCUTS
 // ========================================
 document.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.shiftKey && e.key === 'D') { e.preventDefault(); darkToggle.click(); }
@@ -378,4 +384,4 @@ document.addEventListener('keydown', (e) => {
 
 console.log('🚀 App loaded!');
 console.log('📱 Device:', deviceType);
-console.log('✅ Mobile join support enabled!');
+console.log('✅ All features restored with working login!');
