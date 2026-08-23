@@ -39,19 +39,19 @@ io.on('connection', (socket) => {
     socket.on('send-location', (data) => {
         const now = Date.now();
         const isActive = true;
-
+        
         // Check if user is staying in same area (within 50 meters)
-        const isStaying = users[socket.id] &&
+        const isStaying = users[socket.id] && 
             calculateDistance(
-                users[socket.id].latitude,
+                users[socket.id].latitude, 
                 users[socket.id].longitude,
-                data.latitude,
+                data.latitude, 
                 data.longitude
-            ) < 0.05; // 50 meters
-
-        const stayDuration = isStaying && users[socket.id] ?
+            ) < 0.05;
+        
+        const stayDuration = isStaying && users[socket.id] ? 
             now - users[socket.id].arrivalTime : 0;
-
+        
         users[socket.id] = {
             latitude: data.latitude,
             longitude: data.longitude,
@@ -60,15 +60,15 @@ io.on('connection', (socket) => {
             username: data.username || 'Anonymous',
             userAgent: data.userAgent || 'Unknown',
             lastUpdate: now,
-            arrivalTime: users[socket.id] ?.arrivalTime || now,
+            arrivalTime: (users[socket.id] && users[socket.id].arrivalTime) || now,
             isStaying: isStaying,
             stayDuration: stayDuration,
             isActive: isActive
         };
-
+        
         // Update stay areas
         updateStayAreas(socket.id, data.latitude, data.longitude, isStaying);
-
+        
         io.emit('update-location', {
             id: socket.id,
             latitude: data.latitude,
@@ -82,10 +82,10 @@ io.on('connection', (socket) => {
             stayDuration: users[socket.id].stayDuration,
             isActive: users[socket.id].isActive
         });
-
+        
         io.emit('user-list', users);
         io.emit('stay-areas', stayAreas);
-
+        
         const count = Object.keys(users).length;
         io.emit('user-count', count);
         if (count > previousCount) {
@@ -132,11 +132,11 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
         Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     return R * c;
 }
 
