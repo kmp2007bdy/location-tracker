@@ -7,6 +7,12 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
+    <!-- 3D Map Libraries -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-3d@1.0.0/dist/leaflet-3d.min.css" />
+    <script src="https://unpkg.com/three@0.157.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/leaflet-3d@1.0.0/dist/leaflet-3d.min.js"></script>
+    
+    <!-- Audio for notifications -->
     <audio id="sound-message" preload="auto">
         <source src="https://www.soundjay.com/communication/electronic-chime-1-124506.mp3" type="audio/mpeg">
     </audio>
@@ -20,17 +26,13 @@
 <body>
     <h1>📍 Live Location Tracker</h1>
 
-    <button id="dark-toggle" class="dark-toggle">🌙 Dark Mode</button>
+    <!-- 3D Controls -->
+    <button id="toggle-3d" class="toggle-3d">🌍 3D Mode</button>
+    <button id="toggle-satellite" class="toggle-satellite">🛰️ Satellite</button>
 
-    <div id="map-style-selector" class="map-style-selector">
-        <button class="map-style-btn active" data-layer="carto">🗺️ Street</button>
-        <button class="map-style-btn" data-layer="satellite">🛰️ Satellite</button>
-        <button class="map-style-btn" data-layer="osm">🌍 OpenStreet</button>
-        <button class="map-style-btn" data-layer="dark">🌙 Dark Map</button>
-    </div>
+    <div id="map"></div>
 
     <div id="user-count" class="user-count">👥 <span id="count">0</span> users online</div>
-    <div id="map"></div>
 
     <div id="sidebar" class="sidebar">
         <h4>👥 Online Users</h4>

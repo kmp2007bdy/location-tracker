@@ -1,227 +1,284 @@
 // ========================================
 // 1. MAP INITIALIZATION
 // ========================================
-const map = L.map('map').setView([40.7128, -74.0060], 13);
+const map = L.map('map', {
+    center: [40.7128, -74.0060],
+    zoom: 13,
+    zoomControl: true,
+    fadeAnimation: true,
+    zoomAnimation: true,
+    inertia: true,
+    inertiaDeceleration: 2000,
+    inertiaMaxSpeed: 1000
+});
 
 // ========================================
-// 2. DYNAMIC MAP STYLES (Like Google Maps)
+// 2. 3D MAP LAYERS
 // ========================================
+let is3DMode = false;
+let isSatelliteMode = false;
+let terrainLayer = null;
+let buildingsLayer = null;
+let _3dRoutes = [];
 
-// Define all map styles
-const mapStyles = {
-    // 1. Standard Street Map
+// Base layers
+const layers = {
     street: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap',
         maxZoom: 19
     }),
-    
-    // 2. Satellite View
     satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         attribution: '© Esri',
         maxZoom: 19
     }),
-    
-    // 3. Dark Mode Map (like Google Dark)
     dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '© OpenStreetMap © CartoDB',
         maxZoom: 19,
         subdomains: 'abcd'
-    }),
-    
-    // 4. Vintage/Retro Style
-    vintage: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution: '© OpenStreetMap © CartoDB',
-        maxZoom: 19,
-        subdomains: 'abcd'
-    }),
-    
-    // 5. Green/Nature Theme
-    green: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-        attribution: '© Esri',
-        maxZoom: 19
-    }),
-    
-    // 6. Light Gray (Clean)
-    light: L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '© OpenStreetMap © CartoDB',
-        maxZoom: 19,
-        subdomains: 'abcd'
-    }),
-    
-    // 7. Outdoors (Topographic)
-    outdoors: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenTopoMap',
-        maxZoom: 17
-    }),
-    
-    // 8. Watercolor (Artistic)
-    watercolor: L.tileLayer('https://stamen-tiles-{s}.a.ssl.fastly.net/watercolor/{z}/{x}/{y}.jpg', {
-        attribution: '© Stamen',
-        maxZoom: 18,
-        subdomains: 'abcd'
     })
 };
 
-// Current active style
-let currentStyle = 'street';
-mapStyles.street.addTo(map);
+let currentLayer = 'street';
+layers.street.addTo(map);
 
 // ========================================
-// 3. MAP STYLE SWITCHER UI
+// 3. 3D TERRAIN (Apple Maps Style)
 // ========================================
-
-// Create style switcher buttons
-function createStyleSwitcher() {
-    const container = document.createElement('div');
-    container.id = 'style-switcher';
-    container.style.cssText = `
-        position: absolute;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 1000;
-        background: rgba(0,0,0,0.85);
-        backdrop-filter: blur(10px);
-        padding: 8px 12px;
-        border-radius: 30px;
-        display: flex;
-        gap: 6px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        flex-wrap: wrap;
-        justify-content: center;
-        max-width: 90%;
-    `;
+function enable3DMode() {
+    if (is3DMode) return;
     
-    const styles = [
-        { id: 'street', label: '🗺️ Street' },
-        { id: 'satellite', label: '🛰️ Satellite' },
-        { id: 'dark', label: '🌙 Dark' },
-        { id: 'vintage', label: '🎨 Vintage' },
-        { id: 'green', label: '🌿 Green' },
-        { id: 'light', label: '☀️ Light' },
-        { id: 'outdoors', label: '⛰️ Outdoors' },
-        { id: 'watercolor', label: '🎨 Watercolor' }
-    ];
+    console.log('🌍 Enabling 3D mode...');
+    is3DMode = true;
     
-    styles.forEach(style => {
-        const btn = document.createElement('button');
-        btn.id = `style-${style.id}`;
-        btn.textContent = style.label;
-        btn.style.cssText = `
-            padding: 6px 14px;
-            background: ${style.id === currentStyle ? '#2c3e50' : 'transparent'};
-            color: ${style.id === currentStyle ? 'white' : '#ccc'};
-            border: none;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 11px;
-            transition: all 0.3s;
-            white-space: nowrap;
-            font-weight: ${style.id === currentStyle ? '600' : '400'};
-        `;
-        
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            switchMapStyle(style.id);
-        });
-        
-        // Touch support
-        btn.addEventListener('touchstart', function(e) {
-            e.preventDefault();
-            switchMapStyle(style.id);
-        });
-        
-        container.appendChild(btn);
+    // Add 3D terrain
+    terrainLayer = L.terrain({
+        source: 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
+        maxZoom: 14
     });
+    terrainLayer.addTo(map);
     
-    document.body.appendChild(container);
+    // Add 3D buildings (using OSM building data)
+    buildingsLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap',
+        maxZoom: 19,
+        opacity: 0.3
+    });
+    buildingsLayer.addTo(map);
+    
+    // Enable 3D rotation
+    map.getContainer().style.transition = 'transform 0.5s';
+    
+    // Tilt the map (like Apple Maps)
+    if (map._controlContainer) {
+        // Add tilt controls
+        addTiltControls();
+    }
+    
+    // Update existing routes to be 3D
+    updateRoutes3D();
+    
+    document.getElementById('toggle-3d').textContent = '⬆️ 2D Mode';
+    showNotification('🌍 3D Mode Enabled');
 }
 
-// ========================================
-// 4. SWITCH MAP STYLE FUNCTION
-// ========================================
-function switchMapStyle(styleId) {
-    console.log('🔄 Switching to:', styleId);
+function disable3DMode() {
+    if (!is3DMode) return;
     
-    // Remove current layer
-    Object.values(mapStyles).forEach(layer => {
-        map.removeLayer(layer);
-    });
+    console.log('⬆️ Disabling 3D mode...');
+    is3DMode = false;
     
-    // Add selected layer
-    if (mapStyles[styleId]) {
-        mapStyles[styleId].addTo(map);
-        currentStyle = styleId;
-        
-        // Update button styles
-        document.querySelectorAll('#style-switcher button').forEach(btn => {
-            const isActive = btn.id === `style-${styleId}`;
-            btn.style.background = isActive ? '#2c3e50' : 'transparent';
-            btn.style.color = isActive ? 'white' : '#ccc';
-            btn.style.fontWeight = isActive ? '600' : '400';
-        });
-        
-        // Show notification
-        showNotification(`🗺️ ${styleId.charAt(0).toUpperCase() + styleId.slice(1)} mode`);
+    if (terrainLayer) {
+        map.removeLayer(terrainLayer);
+        terrainLayer = null;
+    }
+    if (buildingsLayer) {
+        map.removeLayer(buildingsLayer);
+        buildingsLayer = null;
+    }
+    
+    // Reset tilt
+    map.setView(map.getCenter(), map.getZoom());
+    
+    document.getElementById('toggle-3d').textContent = '🌍 3D Mode';
+    showNotification('⬆️ 2D Mode Enabled');
+}
+
+function toggle3DMode() {
+    if (is3DMode) {
+        disable3DMode();
     } else {
-        console.error('Style not found:', styleId);
-        // Fallback to street
-        mapStyles.street.addTo(map);
-        currentStyle = 'street';
+        enable3DMode();
     }
 }
 
 // ========================================
-// 5. NOTIFICATION SYSTEM
+// 4. SATELLITE MODE
 // ========================================
-function showNotification(message) {
-    // Remove existing notification
-    const existing = document.getElementById('map-notification');
-    if (existing) existing.remove();
+function toggleSatelliteMode() {
+    isSatelliteMode = !isSatelliteMode;
     
-    const notification = document.createElement('div');
-    notification.id = 'map-notification';
-    notification.textContent = message;
-    notification.style.cssText = `
-        position: absolute;
-        bottom: 80px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 1001;
-        background: rgba(0,0,0,0.8);
-        color: white;
-        padding: 8px 20px;
-        border-radius: 20px;
-        font-size: 13px;
-        font-family: -apple-system, Arial, sans-serif;
-        backdrop-filter: blur(10px);
-        animation: notificationFade 2s ease-out;
-        pointer-events: none;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-    `;
-    
-    // Add animation
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes notificationFade {
-            0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
-            20% { opacity: 1; transform: translateX(-50%) translateY(0); }
-            80% { opacity: 1; transform: translateX(-50%) translateY(0); }
-            100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+    if (isSatelliteMode) {
+        map.removeLayer(layers.street);
+        map.removeLayer(layers.dark);
+        layers.satellite.addTo(map);
+        document.getElementById('toggle-satellite').textContent = '🗺️ Street View';
+        showNotification('🛰️ Satellite Mode');
+        
+        // Enable 3D with satellite
+        if (!is3DMode) {
+            enable3DMode();
         }
-    `;
-    document.head.appendChild(style);
-    
-    document.body.appendChild(notification);
-    
-    // Remove after 2 seconds
-    setTimeout(() => {
-        notification.remove();
-    }, 2000);
+    } else {
+        map.removeLayer(layers.satellite);
+        if (currentLayer === 'street') {
+            layers.street.addTo(map);
+        } else {
+            layers.dark.addTo(map);
+        }
+        document.getElementById('toggle-satellite').textContent = '🛰️ Satellite';
+        showNotification('🗺️ Street View');
+        
+        // Disable 3D if no satellite
+        if (is3DMode) {
+            disable3DMode();
+        }
+    }
 }
 
 // ========================================
-// 6. SOCKET CONNECTION
+// 5. 3D ROUTE CREATION (Apple Maps Style)
+// ========================================
+function create3DRoute(startLat, startLng, endLat, endLng, color = '#007aff') {
+    // Create a 3D route with altitude
+    const routePoints = [];
+    const numPoints = 100;
+    
+    for (let i = 0; i <= numPoints; i++) {
+        const t = i / numPoints;
+        const lat = startLat + (endLat - startLat) * t;
+        const lng = startLng + (endLng - startLng) * t;
+        
+        // Add altitude for 3D effect (sine wave like Apple Maps)
+        const altitude = 50 + Math.sin(t * Math.PI * 4) * 30; // 20-80m altitude
+        routePoints.push([lat, lng, altitude]);
+    }
+    
+    // Create 3D polyline with altitude
+    const routeLine = L.polyline3D(routePoints, {
+        color: color,
+        weight: is3DMode ? 6 : 4,
+        opacity: 0.9,
+        smoothFactor: 1,
+        lineCap: 'round',
+        lineJoin: 'round',
+        dashArray: null
+    });
+    
+    // Add glow effect for 3D
+    if (is3DMode) {
+        routeLine._glow = L.polyline3D(routePoints, {
+            color: color,
+            weight: 12,
+            opacity: 0.2,
+            smoothFactor: 1
+        });
+        routeLine._glow.addTo(map);
+    }
+    
+    // Add to map
+    routeLine.addTo(map);
+    _3dRoutes.push(routeLine);
+    
+    return routeLine;
+}
+
+// ========================================
+// 6. UPDATE EXISTING ROUTES TO 3D
+// ========================================
+function updateRoutes3D() {
+    // Update all existing routes to 3D
+    const routes = document.querySelectorAll('.leaflet-polyline-3d');
+    routes.forEach(route => {
+        // Convert to 3D if possible
+        const latLngs = route._latlngs;
+        if (latLngs && latLngs.length > 1) {
+            const start = latLngs[0];
+            const end = latLngs[latLngs.length - 1];
+            const color = route.options.color || '#007aff';
+            
+            // Remove old route
+            map.removeLayer(route);
+            
+            // Create new 3D route
+            create3DRoute(start.lat, start.lng, end.lat, end.lng, color);
+        }
+    });
+}
+
+// ========================================
+// 7. TILT CONTROLS (Like Apple Maps)
+// ========================================
+function addTiltControls() {
+    const controlContainer = document.createElement('div');
+    controlContainer.id = 'tilt-controls';
+    controlContainer.style.cssText = `
+        position: absolute;
+        bottom: 100px;
+        right: 16px;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    `;
+    
+    const tiltUp = document.createElement('button');
+    tiltUp.textContent = '⬆️';
+    tiltUp.style.cssText = `
+        padding: 10px 14px;
+        background: rgba(0,0,0,0.7);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 18px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+    `;
+    tiltUp.addEventListener('click', () => {
+        const center = map.getCenter();
+        map.setView(center, map.getZoom(), { animate: true });
+        // Tilt up using CSS transform
+        const container = map.getContainer();
+        const currentTilt = parseFloat(container.style.transform.split('rotateX(')[1]) || 0;
+        container.style.transform = `rotateX(${Math.min(currentTilt + 5, 60)}deg)`;
+    });
+    
+    const tiltDown = document.createElement('button');
+    tiltDown.textContent = '⬇️';
+    tiltDown.style.cssText = `
+        padding: 10px 14px;
+        background: rgba(0,0,0,0.7);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 18px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+    `;
+    tiltDown.addEventListener('click', () => {
+        const container = map.getContainer();
+        const currentTilt = parseFloat(container.style.transform.split('rotateX(')[1]) || 0;
+        container.style.transform = `rotateX(${Math.max(currentTilt - 5, 0)}deg)`;
+    });
+    
+    controlContainer.appendChild(tiltUp);
+    controlContainer.appendChild(tiltDown);
+    document.body.appendChild(controlContainer);
+}
+
+// ========================================
+// 8. SOCKET CONNECTION
 // ========================================
 const socket = io();
 let myLocation = null;
@@ -237,7 +294,7 @@ socket.on('connect', () => {
 socket.on('disconnect', () => console.log('❌ Disconnected'));
 
 // ========================================
-// 7. DEVICE DETECTION
+// 9. DEVICE DETECTION
 // ========================================
 function getDeviceType() {
     const ua = navigator.userAgent;
@@ -250,7 +307,155 @@ console.log('📱 Device:', deviceType);
 console.log('👤 Auto-login as:', username);
 
 // ========================================
-// 8. ROUTE CALCULATIONS
+// 10. LOCATION TRACKING
+// ========================================
+function startLocationTracking() {
+    console.log('📍 Starting location tracking...');
+    if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(
+            (position) => {
+                const { latitude, longitude } = position.coords;
+                myLocation = { latitude, longitude };
+                socket.emit('send-location', {
+                    latitude,
+                    longitude,
+                    device: deviceType,
+                    username: username,
+                    userAgent: navigator.userAgent.slice(0, 50)
+                });
+                map.setView([latitude, longitude], 15);
+            },
+            (error) => console.error('Geolocation error:', error),
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    } else {
+        alert('❌ Geolocation not supported.');
+    }
+}
+
+// ========================================
+// 11. 3D ROUTE BETWEEN USERS
+// ========================================
+const markers = {};
+const locationHistory = {};
+const routeLines = {};
+const _3dRoutesList = [];
+
+socket.on('update-location', (data) => {
+    const { id, latitude, longitude, device, connectedAt, username: userName } = data;
+    if (id === socket.id) return;
+    
+    if (!locationHistory[id]) locationHistory[id] = [];
+    locationHistory[id].push([latitude, longitude]);
+    if (locationHistory[id].length > 50) locationHistory[id].shift();
+    
+    let distance = 0;
+    let duration = 0;
+    let speedText = '🚶 Walking';
+    
+    if (myLocation) {
+        distance = calculateDistance(
+            myLocation.latitude, myLocation.longitude,
+            latitude, longitude
+        );
+        const speed = device && device.includes('Phone') ? 5 : 50;
+        duration = calculateDuration(distance, speed);
+        speedText = device && device.includes('Phone') ? '🚶 Walking' : '🚗 Driving';
+    }
+    
+    if (markers[id]) {
+        markers[id].setLatLng([latitude, longitude]);
+        const displayName = userName || id.slice(0, 6);
+        markers[id].setPopupContent(`
+            <b>👤 ${displayName}</b><br>
+            📱 ${device || 'Unknown'}<br>
+            📏 Distance: ${formatDistance(distance)}<br>
+            ⏱️ ETA: ${formatDuration(duration)}<br>
+            ${speedText}
+        `);
+        
+        // Update 3D route
+        if (myLocation && routeLines[id]) {
+            if (is3DMode) {
+                // Recreate as 3D route
+                map.removeLayer(routeLines[id]);
+                const newRoute = create3DRoute(
+                    myLocation.latitude, myLocation.longitude,
+                    latitude, longitude,
+                    device && device.includes('Phone') ? '#ff4757' : '#1e90ff'
+                );
+                routeLines[id] = newRoute;
+            } else {
+                // Regular 2D route
+                routeLines[id].setLatLngs([
+                    [myLocation.latitude, myLocation.longitude],
+                    [latitude, longitude]
+                ]);
+            }
+        }
+        
+        if (locationHistory[id].length > 2 && markers[id].trail) {
+            markers[id].trail.setLatLngs(locationHistory[id]);
+        }
+    } else {
+        const isPhone = device && device.includes('Phone');
+        const color = isPhone ? '#ff4757' : '#1e90ff';
+        const iconSize = isPhone ? 12 : 18;
+        const emoji = isPhone ? '📱' : '💻';
+        const customIcon = L.divIcon({
+            className: 'custom-marker',
+            html: `<div style="background:${color};width:${iconSize}px;height:${iconSize}px;border-radius:50%;border:3px solid white;box-shadow:0 0 10px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:${iconSize*0.5}px;">${emoji}</div>`,
+            iconSize: [iconSize, iconSize]
+        });
+        
+        const displayName = userName || id.slice(0, 6);
+        markers[id] = L.marker([latitude, longitude], { icon: customIcon })
+            .addTo(map)
+            .bindPopup(`
+                <b>👤 ${displayName}</b><br>
+                📱 ${device || 'Unknown'}<br>
+                📏 Distance: ${formatDistance(distance)}<br>
+                ⏱️ ETA: ${formatDuration(duration)}<br>
+                ${speedText}
+            `);
+        
+        // Create 3D route to this user
+        if (myLocation) {
+            let route;
+            if (is3DMode) {
+                route = create3DRoute(
+                    myLocation.latitude, myLocation.longitude,
+                    latitude, longitude,
+                    color
+                );
+            } else {
+                route = L.polyline([
+                    [myLocation.latitude, myLocation.longitude],
+                    [latitude, longitude]
+                ], {
+                    color: color,
+                    weight: 4,
+                    opacity: 0.7,
+                    dashArray: '8, 6'
+                }).addTo(map);
+            }
+            routeLines[id] = route;
+        }
+        
+        // Trail
+        if (locationHistory[id].length > 2) {
+            markers[id].trail = L.polyline(locationHistory[id], {
+                color: color,
+                weight: 2,
+                opacity: 0.3,
+                dashArray: '5, 5'
+            }).addTo(map);
+        }
+    }
+});
+
+// ========================================
+// 12. CALCULATIONS
 // ========================================
 function calculateDistance(lat1, lon1, lat2, lon2) {
     const R = 6371;
@@ -284,132 +489,7 @@ function formatDistance(km) {
 }
 
 // ========================================
-// 9. LOCATION TRACKING
-// ========================================
-function startLocationTracking() {
-    console.log('📍 Starting location tracking...');
-    if (navigator.geolocation) {
-        navigator.geolocation.watchPosition(
-            (position) => {
-                const { latitude, longitude } = position.coords;
-                myLocation = { latitude, longitude };
-                socket.emit('send-location', {
-                    latitude,
-                    longitude,
-                    device: deviceType,
-                    username: username,
-                    userAgent: navigator.userAgent.slice(0, 50)
-                });
-                map.setView([latitude, longitude], 15);
-            },
-            (error) => console.error('Geolocation error:', error),
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-        );
-    } else {
-        alert('❌ Geolocation not supported.');
-    }
-}
-
-// ========================================
-// 10. MARKERS & ROUTES
-// ========================================
-const markers = {};
-const locationHistory = {};
-const routeLines = {};
-
-// ========================================
-// 11. RECEIVE LOCATION UPDATES
-// ========================================
-socket.on('update-location', (data) => {
-    const { id, latitude, longitude, device, connectedAt, username: userName, lastUpdate } = data;
-    if (id === socket.id) return;
-    
-    if (!locationHistory[id]) locationHistory[id] = [];
-    locationHistory[id].push([latitude, longitude]);
-    if (locationHistory[id].length > 50) locationHistory[id].shift();
-    
-    let distance = 0;
-    let duration = 0;
-    let speedText = '🚶 Walking';
-    
-    if (myLocation) {
-        distance = calculateDistance(
-            myLocation.latitude, myLocation.longitude,
-            latitude, longitude
-        );
-        const speed = device && device.includes('Phone') ? 5 : 50;
-        duration = calculateDuration(distance, speed);
-        speedText = device && device.includes('Phone') ? '🚶 Walking' : '🚗 Driving';
-    }
-    
-    if (markers[id]) {
-        markers[id].setLatLng([latitude, longitude]);
-        const displayName = userName || id.slice(0, 6);
-        markers[id].setPopupContent(`
-            <b>👤 ${displayName}</b><br>
-            📱 ${device || 'Unknown'}<br>
-            📏 Distance: ${formatDistance(distance)}<br>
-            ⏱️ ETA: ${formatDuration(duration)}<br>
-            ${speedText}
-        `);
-        
-        if (myLocation && routeLines[id]) {
-            routeLines[id].setLatLngs([
-                [myLocation.latitude, myLocation.longitude],
-                [latitude, longitude]
-            ]);
-        }
-        
-        if (locationHistory[id].length > 2 && markers[id].trail) {
-            markers[id].trail.setLatLngs(locationHistory[id]);
-        }
-    } else {
-        const isPhone = device && device.includes('Phone');
-        const color = isPhone ? '#ff4757' : '#1e90ff';
-        const iconSize = isPhone ? 12 : 18;
-        const emoji = isPhone ? '📱' : '💻';
-        const customIcon = L.divIcon({
-            className: 'custom-marker',
-            html: `<div style="background:${color};width:${iconSize}px;height:${iconSize}px;border-radius:50%;border:3px solid white;box-shadow:0 0 10px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:${iconSize*0.5}px;">${emoji}</div>`,
-            iconSize: [iconSize, iconSize]
-        });
-        
-        const displayName = userName || id.slice(0, 6);
-        markers[id] = L.marker([latitude, longitude], { icon: customIcon })
-            .addTo(map)
-            .bindPopup(`
-                <b>👤 ${displayName}</b><br>
-                📱 ${device || 'Unknown'}<br>
-                📏 Distance: ${formatDistance(distance)}<br>
-                ⏱️ ETA: ${formatDuration(duration)}<br>
-                ${speedText}
-            `);
-        
-        if (myLocation) {
-            routeLines[id] = L.polyline([
-                [myLocation.latitude, myLocation.longitude],
-                [latitude, longitude]
-            ], {
-                color: color,
-                weight: 3,
-                opacity: 0.6,
-                dashArray: '8, 6'
-            }).addTo(map);
-        }
-        
-        if (locationHistory[id].length > 2) {
-            markers[id].trail = L.polyline(locationHistory[id], {
-                color: color,
-                weight: 2,
-                opacity: 0.3,
-                dashArray: '5, 5'
-            }).addTo(map);
-        }
-    }
-});
-
-// ========================================
-// 12. USER DISCONNECT
+// 13. USER DISCONNECT
 // ========================================
 socket.on('user-disconnected', (id) => {
     if (markers[id]) {
@@ -425,7 +505,7 @@ socket.on('user-disconnected', (id) => {
 });
 
 // ========================================
-// 13. USER COUNT & LIST
+// 14. USER COUNT & LIST
 // ========================================
 socket.on('user-count', (count) => {
     document.getElementById('count').textContent = count;
@@ -454,7 +534,7 @@ socket.on('user-list', (users) => {
 socket.emit('get-users');
 
 // ========================================
-// 14. CHAT
+// 15. CHAT
 // ========================================
 const chatInput = document.getElementById('chat-input');
 const chatSend = document.getElementById('chat-send');
@@ -488,7 +568,7 @@ socket.on('chat-message', (data) => {
 });
 
 // ========================================
-// 15. SOS
+// 16. SOS
 // ========================================
 document.getElementById('sos-button').addEventListener('click', function(e) {
     e.preventDefault();
@@ -520,18 +600,6 @@ socket.on('sos-alert', (data) => {
             .openPopup();
         setTimeout(() => map.removeLayer(sosMarker), 30000);
     }
-});
-
-// ========================================
-// 16. DARK MODE (App Theme)
-// ========================================
-const darkToggle = document.getElementById('dark-toggle');
-let darkMode = false;
-darkToggle.addEventListener('click', function(e) {
-    e.preventDefault();
-    darkMode = !darkMode;
-    document.body.classList.toggle('dark-mode');
-    darkToggle.textContent = darkMode ? '☀️ Light Mode' : '🌙 Dark Mode';
 });
 
 // ========================================
@@ -575,26 +643,66 @@ map.on('click', async function(e) {
 });
 
 // ========================================
-// 19. KEYBOARD SHORTCUTS
+// 19. NOTIFICATION SYSTEM
+// ========================================
+function showNotification(message) {
+    const existing = document.getElementById('map-notification');
+    if (existing) existing.remove();
+    
+    const notification = document.createElement('div');
+    notification.id = 'map-notification';
+    notification.textContent = message;
+    notification.style.cssText = `
+        position: absolute;
+        bottom: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1001;
+        background: rgba(0,0,0,0.8);
+        color: white;
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-family: -apple-system, Arial, sans-serif;
+        backdrop-filter: blur(10px);
+        animation: notificationFade 2s ease-out;
+        pointer-events: none;
+    `;
+    
+    document.body.appendChild(notification);
+    setTimeout(() => notification.remove(), 2000);
+}
+
+// ========================================
+// 20. KEYBOARD SHORTCUTS
 // ========================================
 document.addEventListener('keydown', (e) => {
-    if (e.ctrlKey && e.shiftKey && e.key === 'D') { e.preventDefault(); darkToggle.click(); }
-    if (e.ctrlKey && e.shiftKey && e.key === 'S') { e.preventDefault(); document.getElementById('sos-button').click(); }
+    if (e.ctrlKey && e.shiftKey && e.key === '3') {
+        e.preventDefault();
+        toggle3DMode();
+    }
+    if (e.ctrlKey && e.shiftKey && e.key === 'S') {
+        e.preventDefault();
+        document.getElementById('sos-button').click();
+    }
     if (e.key === 'Escape') map.closePopup();
 });
 
 // ========================================
-// 20. INITIALIZE STYLE SWITCHER
+// 21. INITIALIZE
 // ========================================
-// Wait for DOM to load before creating the switcher
 document.addEventListener('DOMContentLoaded', function() {
-    createStyleSwitcher();
-    console.log('🗺️ Dynamic map style switcher loaded!');
-    console.log('📱 Available styles: Street, Satellite, Dark, Vintage, Green, Light, Outdoors, Watercolor');
+    document.getElementById('toggle-3d').addEventListener('click', toggle3DMode);
+    document.getElementById('toggle-satellite').addEventListener('click', toggleSatelliteMode);
+    console.log('🌍 3D Map Loaded!');
+    console.log('📱 Tips:');
+    console.log('  - Click "3D Mode" for Apple Maps style');
+    console.log('  - Click "Satellite" for satellite view');
+    console.log('  - Use tilt controls on the right');
+    console.log('  - Keyboard: Ctrl+Shift+3 for 3D mode');
 });
 
 console.log('🚀 App loaded!');
 console.log('📱 Device:', deviceType);
-console.log('👤 Auto-logged in as:', username);
-console.log('🗺️ Click the buttons at the bottom to change map style!');
-console.log('⌨️ Shortcuts: Ctrl+Shift+D (Dark Mode), Ctrl+Shift+S (SOS)');
+console.log('🌍 3D routes available in satellite mode!');
+console.log('⌨️ Shortcut: Ctrl+Shift+3 (3D Mode)');
