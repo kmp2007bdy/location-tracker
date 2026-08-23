@@ -381,3 +381,143 @@ body.dark-mode .chat-send {
     background: #8ab4f8;
     color: #202124;
 }
+
+/* ===== STYLE SWITCHER ===== */
+#style-switcher {
+    position: absolute !important;
+    bottom: 20px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    z-index: 1000 !important;
+    background: rgba(0, 0, 0, 0.85) !important;
+    backdrop-filter: blur(10px) !important;
+    padding: 8px 12px !important;
+    border-radius: 30px !important;
+    display: flex !important;
+    gap: 6px !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    max-width: 92% !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+#style-switcher button {
+    padding: 6px 14px !important;
+    background: transparent !important;
+    color: #ccc !important;
+    border: none !important;
+    border-radius: 20px !important;
+    cursor: pointer !important;
+    font-size: 11px !important;
+    transition: all 0.3s !important;
+    white-space: nowrap !important;
+    font-weight: 400 !important;
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: transparent !important;
+}
+
+#style-switcher button:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+}
+
+#style-switcher button:active {
+    transform: scale(0.95) !important;
+}
+
+/* Dark mode support for switcher */
+body.dark-mode #style-switcher {
+    background: rgba(20, 20, 30, 0.95) !important;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    #style-switcher {
+        bottom: 10px !important;
+        padding: 6px 10px !important;
+        gap: 4px !important;
+        border-radius: 20px !important;
+    }
+    
+    #style-switcher button {
+        font-size: 9px !important;
+        padding: 4px 10px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    #style-switcher button {
+        font-size: 8px !important;
+        padding: 3px 8px !important;
+    }
+}
+
+/* ===== STYLE SWITCHER ===== */
+#style-switcher {
+    position: absolute !important;
+    bottom: 20px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    z-index: 1000 !important;
+    background: rgba(0, 0, 0, 0.85) !important;
+    backdrop-filter: blur(10px) !important;
+    padding: 8px 12px !important;
+    border-radius: 30px !important;
+    display: flex !important;
+    gap: 6px !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    max-width: 92% !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+#style-switcher button {
+    padding: 6px 14px !important;
+    background: transparent !important;
+    color: #ccc !important;
+    border: none !important;
+    border-radius: 20px !important;
+    cursor: pointer !important;
+    font-size: 11px !important;
+    transition: all 0.3s !important;
+    white-space: nowrap !important;
+    font-weight: 400 !important;
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: transparent !important;
+}
+
+#style-switcher button:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+}
+
+#style-switcher button:active {
+    transform: scale(0.95) !important;
+}
+
+/* Dark mode support for switcher */
+body.dark-mode #style-switcher {
+    background: rgba(20, 20, 30, 0.95) !important;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    #style-switcher {
+        bottom: 10px !important;
+        padding: 6px 10px !important;
+        gap: 4px !important;
+        border-radius: 20px !important;
+    }
+    
+    #style-switcher button {
+        font-size: 9px !important;
+        padding: 4px 10px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    #style-switcher button {
+        font-size: 8px !important;
+        padding: 3px 8px !important;
+    }
+}

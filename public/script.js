@@ -4,50 +4,224 @@
 const map = L.map('map').setView([40.7128, -74.0060], 13);
 
 // ========================================
-// 2. MAP LAYERS (With Street Names)
+// 2. DYNAMIC MAP STYLES (Like Google Maps)
 // ========================================
-const mapLayers = {
-    carto: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution: '© OpenStreetMap © CartoDB',
-        maxZoom: 19,
-        subdomains: 'abcd'
+
+// Define all map styles
+const mapStyles = {
+    // 1. Standard Street Map
+    street: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap',
+        maxZoom: 19
     }),
+    
+    // 2. Satellite View
     satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         attribution: '© Esri',
         maxZoom: 19
     }),
-    osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
-        maxZoom: 19
-    }),
+    
+    // 3. Dark Mode Map (like Google Dark)
     dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '© OpenStreetMap © CartoDB',
         maxZoom: 19,
         subdomains: 'abcd'
+    }),
+    
+    // 4. Vintage/Retro Style
+    vintage: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '© OpenStreetMap © CartoDB',
+        maxZoom: 19,
+        subdomains: 'abcd'
+    }),
+    
+    // 5. Green/Nature Theme
+    green: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+        attribution: '© Esri',
+        maxZoom: 19
+    }),
+    
+    // 6. Light Gray (Clean)
+    light: L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '© OpenStreetMap © CartoDB',
+        maxZoom: 19,
+        subdomains: 'abcd'
+    }),
+    
+    // 7. Outdoors (Topographic)
+    outdoors: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenTopoMap',
+        maxZoom: 17
+    }),
+    
+    // 8. Watercolor (Artistic)
+    watercolor: L.tileLayer('https://stamen-tiles-{s}.a.ssl.fastly.net/watercolor/{z}/{x}/{y}.jpg', {
+        attribution: '© Stamen',
+        maxZoom: 18,
+        subdomains: 'abcd'
     })
 };
 
-let currentLayer = 'carto';
-mapLayers.carto.addTo(map);
+// Current active style
+let currentStyle = 'street';
+mapStyles.street.addTo(map);
 
 // ========================================
-// 3. MAP STYLE SELECTOR
+// 3. MAP STYLE SWITCHER UI
 // ========================================
-const styleBtns = document.querySelectorAll('.map-style-btn');
-styleBtns.forEach(btn => {
-    btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        styleBtns.forEach(b => b.classList.remove('active'));
-        this.classList.add('active');
-        Object.values(mapLayers).forEach(layer => map.removeLayer(layer));
-        const layerName = this.dataset.layer;
-        mapLayers[layerName].addTo(map);
-        currentLayer = layerName;
+
+// Create style switcher buttons
+function createStyleSwitcher() {
+    const container = document.createElement('div');
+    container.id = 'style-switcher';
+    container.style.cssText = `
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+        background: rgba(0,0,0,0.85);
+        backdrop-filter: blur(10px);
+        padding: 8px 12px;
+        border-radius: 30px;
+        display: flex;
+        gap: 6px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        flex-wrap: wrap;
+        justify-content: center;
+        max-width: 90%;
+    `;
+    
+    const styles = [
+        { id: 'street', label: '🗺️ Street' },
+        { id: 'satellite', label: '🛰️ Satellite' },
+        { id: 'dark', label: '🌙 Dark' },
+        { id: 'vintage', label: '🎨 Vintage' },
+        { id: 'green', label: '🌿 Green' },
+        { id: 'light', label: '☀️ Light' },
+        { id: 'outdoors', label: '⛰️ Outdoors' },
+        { id: 'watercolor', label: '🎨 Watercolor' }
+    ];
+    
+    styles.forEach(style => {
+        const btn = document.createElement('button');
+        btn.id = `style-${style.id}`;
+        btn.textContent = style.label;
+        btn.style.cssText = `
+            padding: 6px 14px;
+            background: ${style.id === currentStyle ? '#2c3e50' : 'transparent'};
+            color: ${style.id === currentStyle ? 'white' : '#ccc'};
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.3s;
+            white-space: nowrap;
+            font-weight: ${style.id === currentStyle ? '600' : '400'};
+        `;
+        
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            switchMapStyle(style.id);
+        });
+        
+        // Touch support
+        btn.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            switchMapStyle(style.id);
+        });
+        
+        container.appendChild(btn);
     });
-});
+    
+    document.body.appendChild(container);
+}
 
 // ========================================
-// 4. SOCKET CONNECTION
+// 4. SWITCH MAP STYLE FUNCTION
+// ========================================
+function switchMapStyle(styleId) {
+    console.log('🔄 Switching to:', styleId);
+    
+    // Remove current layer
+    Object.values(mapStyles).forEach(layer => {
+        map.removeLayer(layer);
+    });
+    
+    // Add selected layer
+    if (mapStyles[styleId]) {
+        mapStyles[styleId].addTo(map);
+        currentStyle = styleId;
+        
+        // Update button styles
+        document.querySelectorAll('#style-switcher button').forEach(btn => {
+            const isActive = btn.id === `style-${styleId}`;
+            btn.style.background = isActive ? '#2c3e50' : 'transparent';
+            btn.style.color = isActive ? 'white' : '#ccc';
+            btn.style.fontWeight = isActive ? '600' : '400';
+        });
+        
+        // Show notification
+        showNotification(`🗺️ ${styleId.charAt(0).toUpperCase() + styleId.slice(1)} mode`);
+    } else {
+        console.error('Style not found:', styleId);
+        // Fallback to street
+        mapStyles.street.addTo(map);
+        currentStyle = 'street';
+    }
+}
+
+// ========================================
+// 5. NOTIFICATION SYSTEM
+// ========================================
+function showNotification(message) {
+    // Remove existing notification
+    const existing = document.getElementById('map-notification');
+    if (existing) existing.remove();
+    
+    const notification = document.createElement('div');
+    notification.id = 'map-notification';
+    notification.textContent = message;
+    notification.style.cssText = `
+        position: absolute;
+        bottom: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1001;
+        background: rgba(0,0,0,0.8);
+        color: white;
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-family: -apple-system, Arial, sans-serif;
+        backdrop-filter: blur(10px);
+        animation: notificationFade 2s ease-out;
+        pointer-events: none;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    `;
+    
+    // Add animation
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes notificationFade {
+            0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            20% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            80% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+        }
+    `;
+    document.head.appendChild(style);
+    
+    document.body.appendChild(notification);
+    
+    // Remove after 2 seconds
+    setTimeout(() => {
+        notification.remove();
+    }, 2000);
+}
+
+// ========================================
+// 6. SOCKET CONNECTION
 // ========================================
 const socket = io();
 let myLocation = null;
@@ -63,7 +237,7 @@ socket.on('connect', () => {
 socket.on('disconnect', () => console.log('❌ Disconnected'));
 
 // ========================================
-// 5. DEVICE DETECTION
+// 7. DEVICE DETECTION
 // ========================================
 function getDeviceType() {
     const ua = navigator.userAgent;
@@ -76,10 +250,10 @@ console.log('📱 Device:', deviceType);
 console.log('👤 Auto-login as:', username);
 
 // ========================================
-// 6. ROUTE CALCULATIONS (Like Google Maps)
+// 8. ROUTE CALCULATIONS
 // ========================================
 function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371; // Earth's radius in km
+    const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     const a = 
@@ -91,18 +265,9 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 }
 
 function calculateDuration(distanceKm, speedKmh = 5) {
-    // Default speed: 5 km/h (walking)
-    // You can change to: 50 km/h (driving), 15 km/h (biking)
     const hours = distanceKm / speedKmh;
     const minutes = Math.round(hours * 60);
     return minutes;
-}
-
-function getSpeedText(deviceType) {
-    if (deviceType && deviceType.includes('Phone')) {
-        return '🚶 Walking'; // Walking speed for phones
-    }
-    return '🚗 Driving'; // Driving speed for laptops
 }
 
 function formatDuration(minutes) {
@@ -119,7 +284,7 @@ function formatDistance(km) {
 }
 
 // ========================================
-// 7. LOCATION TRACKING
+// 9. LOCATION TRACKING
 // ========================================
 function startLocationTracking() {
     console.log('📍 Starting location tracking...');
@@ -146,14 +311,14 @@ function startLocationTracking() {
 }
 
 // ========================================
-// 8. MARKERS & ROUTES
+// 10. MARKERS & ROUTES
 // ========================================
 const markers = {};
 const locationHistory = {};
 const routeLines = {};
 
 // ========================================
-// 9. RECEIVE LOCATION UPDATES (With Route Info)
+// 11. RECEIVE LOCATION UPDATES
 // ========================================
 socket.on('update-location', (data) => {
     const { id, latitude, longitude, device, connectedAt, username: userName, lastUpdate } = data;
@@ -163,7 +328,6 @@ socket.on('update-location', (data) => {
     locationHistory[id].push([latitude, longitude]);
     if (locationHistory[id].length > 50) locationHistory[id].shift();
     
-    // Calculate route info
     let distance = 0;
     let duration = 0;
     let speedText = '🚶 Walking';
@@ -178,11 +342,8 @@ socket.on('update-location', (data) => {
         speedText = device && device.includes('Phone') ? '🚶 Walking' : '🚗 Driving';
     }
     
-    // Update or create marker
     if (markers[id]) {
         markers[id].setLatLng([latitude, longitude]);
-        
-        // Update popup with route info
         const displayName = userName || id.slice(0, 6);
         markers[id].setPopupContent(`
             <b>👤 ${displayName}</b><br>
@@ -192,7 +353,6 @@ socket.on('update-location', (data) => {
             ${speedText}
         `);
         
-        // Update route line
         if (myLocation && routeLines[id]) {
             routeLines[id].setLatLngs([
                 [myLocation.latitude, myLocation.longitude],
@@ -225,7 +385,6 @@ socket.on('update-location', (data) => {
                 ${speedText}
             `);
         
-        // Draw route line to this user
         if (myLocation) {
             routeLines[id] = L.polyline([
                 [myLocation.latitude, myLocation.longitude],
@@ -238,7 +397,6 @@ socket.on('update-location', (data) => {
             }).addTo(map);
         }
         
-        // Trail
         if (locationHistory[id].length > 2) {
             markers[id].trail = L.polyline(locationHistory[id], {
                 color: color,
@@ -251,7 +409,7 @@ socket.on('update-location', (data) => {
 });
 
 // ========================================
-// 10. USER DISCONNECT
+// 12. USER DISCONNECT
 // ========================================
 socket.on('user-disconnected', (id) => {
     if (markers[id]) {
@@ -267,7 +425,7 @@ socket.on('user-disconnected', (id) => {
 });
 
 // ========================================
-// 11. USER COUNT & LIST
+// 13. USER COUNT & LIST
 // ========================================
 socket.on('user-count', (count) => {
     document.getElementById('count').textContent = count;
@@ -296,7 +454,7 @@ socket.on('user-list', (users) => {
 socket.emit('get-users');
 
 // ========================================
-// 12. CHAT
+// 14. CHAT
 // ========================================
 const chatInput = document.getElementById('chat-input');
 const chatSend = document.getElementById('chat-send');
@@ -330,7 +488,7 @@ socket.on('chat-message', (data) => {
 });
 
 // ========================================
-// 13. SOS
+// 15. SOS
 // ========================================
 document.getElementById('sos-button').addEventListener('click', function(e) {
     e.preventDefault();
@@ -365,7 +523,7 @@ socket.on('sos-alert', (data) => {
 });
 
 // ========================================
-// 14. DARK MODE
+// 16. DARK MODE (App Theme)
 // ========================================
 const darkToggle = document.getElementById('dark-toggle');
 let darkMode = false;
@@ -377,7 +535,7 @@ darkToggle.addEventListener('click', function(e) {
 });
 
 // ========================================
-// 15. SOUNDS
+// 17. SOUNDS
 // ========================================
 function playSound(type) {
     const sounds = {
@@ -393,7 +551,7 @@ function playSound(type) {
 }
 
 // ========================================
-// 16. MAP CLICK - ADDRESS
+// 18. MAP CLICK - ADDRESS
 // ========================================
 map.on('click', async function(e) {
     const { lat, lng } = e.latlng;
@@ -417,21 +575,26 @@ map.on('click', async function(e) {
 });
 
 // ========================================
-// 17. KEYBOARD SHORTCUTS
+// 19. KEYBOARD SHORTCUTS
 // ========================================
 document.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.shiftKey && e.key === 'D') { e.preventDefault(); darkToggle.click(); }
     if (e.ctrlKey && e.shiftKey && e.key === 'S') { e.preventDefault(); document.getElementById('sos-button').click(); }
-    if (e.ctrlKey && e.shiftKey && e.key === '1') { e.preventDefault(); document.querySelector('[data-layer="carto"]').click(); }
-    if (e.ctrlKey && e.shiftKey && e.key === '2') { e.preventDefault(); document.querySelector('[data-layer="satellite"]').click(); }
-    if (e.ctrlKey && e.shiftKey && e.key === '3') { e.preventDefault(); document.querySelector('[data-layer="osm"]').click(); }
-    if (e.ctrlKey && e.shiftKey && e.key === '4') { e.preventDefault(); document.querySelector('[data-layer="dark"]').click(); }
     if (e.key === 'Escape') map.closePopup();
+});
+
+// ========================================
+// 20. INITIALIZE STYLE SWITCHER
+// ========================================
+// Wait for DOM to load before creating the switcher
+document.addEventListener('DOMContentLoaded', function() {
+    createStyleSwitcher();
+    console.log('🗺️ Dynamic map style switcher loaded!');
+    console.log('📱 Available styles: Street, Satellite, Dark, Vintage, Green, Light, Outdoors, Watercolor');
 });
 
 console.log('🚀 App loaded!');
 console.log('📱 Device:', deviceType);
 console.log('👤 Auto-logged in as:', username);
-console.log('✅ Route & duration tracking enabled!');
-console.log('📏 Click any user marker to see distance and ETA');
-console.log('⌨️ Shortcuts: Ctrl+Shift+D (Dark), Ctrl+Shift+S (SOS), Ctrl+Shift+1-4 (Maps)');
+console.log('🗺️ Click the buttons at the bottom to change map style!');
+console.log('⌨️ Shortcuts: Ctrl+Shift+D (Dark Mode), Ctrl+Shift+S (SOS)');
