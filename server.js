@@ -22,10 +22,12 @@ app.use(express.static('public'));
 
 let users = {};
 let previousCount = 0;
+let stayAreas = {};
 
 io.on('connection', (socket) => {
     console.log('✅ New user connected:', socket.id);
     socket.emit('user-list', users);
+    socket.emit('stay-areas', stayAreas);
 
     socket.on('set-username', (username) => {
         if (users[socket.id]) {
@@ -35,6 +37,21 @@ io.on('connection', (socket) => {
     });
 
     socket.on('send-location', (data) => {
+        const now = Date.now();
+        const isActive = true;
+
+        // Check if user is staying in same area (within 50 meters)
+        const isStaying = users[socket.id] &&
+            calculateDistance(
+                users[socket.id].latitude,
+                users[socket.id].longitude,
+                data.latitude,
+                data.longitude
+            ) < 0.05; // 50 meters
+
+        const stayDuration = isStaying && users[socket.id] ?
+            now - users[socket.id].arrivalTime : 0;
+
         users[socket.id] = {
             latitude: data.latitude,
             longitude: data.longitude,
@@ -42,8 +59,16 @@ io.on('connection', (socket) => {
             connectedAt: new Date().toLocaleTimeString(),
             username: data.username || 'Anonymous',
             userAgent: data.userAgent || 'Unknown',
-            lastUpdate: Date.now()
+            lastUpdate: now,
+            arrivalTime: users[socket.id] ? .arrivalTime || now,
+            isStaying: isStaying,
+            stayDuration: stayDuration,
+            isActive: isActive
         };
+
+        // Update stay areas
+        updateStayAreas(socket.id, data.latitude, data.longitude, isStaying);
+
         io.emit('update-location', {
             id: socket.id,
             latitude: data.latitude,
@@ -51,9 +76,16 @@ io.on('connection', (socket) => {
             device: users[socket.id].device,
             connectedAt: users[socket.id].connectedAt,
             username: users[socket.id].username,
-            lastUpdate: users[socket.id].lastUpdate
+            lastUpdate: users[socket.id].lastUpdate,
+            arrivalTime: users[socket.id].arrivalTime,
+            isStaying: users[socket.id].isStaying,
+            stayDuration: users[socket.id].stayDuration,
+            isActive: users[socket.id].isActive
         });
+
         io.emit('user-list', users);
+        io.emit('stay-areas', stayAreas);
+
         const count = Object.keys(users).length;
         io.emit('user-count', count);
         if (count > previousCount) {
@@ -81,17 +113,54 @@ io.on('connection', (socket) => {
 
     socket.on('get-users', () => {
         socket.emit('user-list', users);
+        socket.emit('stay-areas', stayAreas);
     });
 
     socket.on('disconnect', () => {
         delete users[socket.id];
+        delete stayAreas[socket.id];
         io.emit('user-disconnected', socket.id);
         io.emit('user-list', users);
+        io.emit('stay-areas', stayAreas);
         const count = Object.keys(users).length;
         io.emit('user-count', count);
         previousCount = count;
     });
 });
+
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
+function updateStayAreas(userId, lat, lng, isStaying) {
+    if (isStaying) {
+        if (!stayAreas[userId]) {
+            stayAreas[userId] = {
+                lat: lat,
+                lng: lng,
+                startTime: Date.now(),
+                lastUpdate: Date.now(),
+                users: [userId]
+            };
+        } else {
+            stayAreas[userId].lat = lat;
+            stayAreas[userId].lng = lng;
+            stayAreas[userId].lastUpdate = Date.now();
+        }
+    } else {
+        if (stayAreas[userId]) {
+            delete stayAreas[userId];
+        }
+    }
+}
 
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, '0.0.0.0', () => {

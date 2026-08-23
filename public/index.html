@@ -1,18 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Live Location Tracker</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
-    <!-- 3D Map Libraries -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-3d@1.0.0/dist/leaflet-3d.min.css" />
-    <script src="https://unpkg.com/three@0.157.0/build/three.min.js"></script>
-    <script src="https://unpkg.com/leaflet-3d@1.0.0/dist/leaflet-3d.min.js"></script>
-    
-    <!-- Audio for notifications -->
+
     <audio id="sound-message" preload="auto">
         <source src="https://www.soundjay.com/communication/electronic-chime-1-124506.mp3" type="audio/mpeg">
     </audio>
@@ -23,25 +18,28 @@
         <source src="https://www.soundjay.com/communication/drop-1-101443.mp3" type="audio/mpeg">
     </audio>
 </head>
+
 <body>
     <h1>📍 Live Location Tracker</h1>
 
-    <!-- 3D Controls -->
-    <button id="toggle-3d" class="toggle-3d">🌍 3D Mode</button>
     <button id="toggle-satellite" class="toggle-satellite">🛰️ Satellite</button>
-
-    <div id="map"></div>
 
     <div id="user-count" class="user-count">👥 <span id="count">0</span> users online</div>
 
+    <div id="map"></div>
+
     <div id="sidebar" class="sidebar">
         <h4>👥 Online Users</h4>
-        <div id="user-list"><div class="no-users">Loading...</div></div>
+        <div id="user-list">
+            <div class="no-users">Loading...</div>
+        </div>
     </div>
 
     <div id="chat-container" class="chat-container">
         <div class="chat-header">💬 Live Chat</div>
-        <div id="messages" class="chat-messages"><div class="no-messages">💬 Say hello!</div></div>
+        <div id="messages" class="chat-messages">
+            <div class="no-messages">💬 Say hello!</div>
+        </div>
         <div class="chat-input-area">
             <input type="text" id="chat-input" placeholder="Type a message..." class="chat-input">
             <button id="chat-send" class="chat-send">Send</button>
@@ -54,4 +52,5 @@
     <script src="/socket.io/socket.io.js"></script>
     <script src="script.js"></script>
 </body>
+
 </html>
