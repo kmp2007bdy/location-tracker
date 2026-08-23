@@ -60,7 +60,7 @@ io.on('connection', (socket) => {
             username: data.username || 'Anonymous',
             userAgent: data.userAgent || 'Unknown',
             lastUpdate: now,
-            arrivalTime: users[socket.id] ? .arrivalTime || now,
+            arrivalTime: users[socket.id] ?.arrivalTime || now,
             isStaying: isStaying,
             stayDuration: stayDuration,
             isActive: isActive
